@@ -28,7 +28,16 @@ curl -X POST http://127.0.0.1:8787/api/tutor \
   -d '{"message":"请只回复 OK"}'
 ```
 
-## Tutor prompt shape
+## Tutor prompt files
+
+The tutor prompt is intentionally editable without touching the server code:
+
+- `backend/prompts/tutor_system.md`: system-level tutor behavior and safety rules
+- `backend/prompts/tutor_user_template.md`: the context template sent with each learner message
+
+The backend reads these files when it builds each request, so your edits apply on the next tutor request.
+
+## Tutor payload shape
 
 The frontend sends the current learning state to `/api/tutor`:
 
