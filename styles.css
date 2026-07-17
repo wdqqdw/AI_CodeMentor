@@ -371,6 +371,7 @@ svg {
 }
 
 .catalog-category {
+  flex: 0 0 auto;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: #ffffff;
@@ -482,10 +483,8 @@ svg {
 }
 
 .catalog-category.expanded .catalog-tasks {
-  max-height: min(46vh, 520px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-gutter: stable;
+  max-height: none;
+  overflow: visible;
 }
 
 .catalog-task {
@@ -545,24 +544,20 @@ svg {
   color: #8b5cf6;
 }
 
-.catalog-list::-webkit-scrollbar,
-.catalog-tasks::-webkit-scrollbar {
+.catalog-list::-webkit-scrollbar {
   width: 8px;
 }
 
-.catalog-list::-webkit-scrollbar-track,
-.catalog-tasks::-webkit-scrollbar-track {
+.catalog-list::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.catalog-list::-webkit-scrollbar-thumb,
-.catalog-tasks::-webkit-scrollbar-thumb {
+.catalog-list::-webkit-scrollbar-thumb {
   background: #d8cef1;
   border-radius: 999px;
 }
 
-.catalog-list::-webkit-scrollbar-thumb:hover,
-.catalog-tasks::-webkit-scrollbar-thumb:hover {
+.catalog-list::-webkit-scrollbar-thumb:hover {
   background: #b99cf6;
 }
 
