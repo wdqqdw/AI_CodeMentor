@@ -374,6 +374,16 @@ svg {
   background: #ffffff;
   box-shadow: 0 8px 20px rgba(39, 28, 74, 0.05);
   overflow: hidden;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.catalog-category:hover,
+.catalog-category:focus-within {
+  border-color: rgba(109, 44, 240, 0.28);
+  box-shadow: 0 12px 26px rgba(88, 58, 160, 0.1);
 }
 
 .catalog-category-button {
@@ -388,10 +398,24 @@ svg {
   background: #ffffff;
   border-radius: 0;
   text-align: left;
+  transition:
+    color 160ms ease,
+    background 160ms ease;
+}
+
+.catalog-category-button:hover,
+.catalog-category-button:focus-visible {
+  color: var(--purple);
+  background: #f8f4ff;
+}
+
+.catalog-category-button:active {
+  transform: translateY(1px);
 }
 
 .catalog-category.expanded .catalog-category-button {
-  background: linear-gradient(90deg, #fbfaff, #ffffff);
+  color: var(--purple);
+  background: linear-gradient(90deg, #f5f0ff, #ffffff);
 }
 
 .category-copy {
@@ -403,12 +427,20 @@ svg {
 
 .category-copy strong {
   font-size: 1.02rem;
+  transition: color 160ms ease;
 }
 
 .category-copy span {
   color: #817a9c;
   font-size: 0.8rem;
   font-weight: 750;
+  transition: color 160ms ease;
+}
+
+.catalog-category-button:hover .category-copy span,
+.catalog-category-button:focus-visible .category-copy span,
+.catalog-category.expanded .category-copy span {
+  color: #8b5cf6;
 }
 
 .category-meta {
@@ -428,7 +460,9 @@ svg {
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 2.2;
-  transition: transform 160ms ease;
+  transition:
+    transform 160ms ease,
+    color 160ms ease;
 }
 
 .catalog-category.expanded .category-meta svg {
@@ -453,6 +487,26 @@ svg {
   border: 1px solid #ede8f5;
   border-radius: 8px;
   text-align: left;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    color 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.catalog-task:hover,
+.catalog-task:focus-visible {
+  color: var(--purple);
+  background: #f7f2ff;
+  border-color: rgba(109, 44, 240, 0.38);
+  box-shadow: 0 8px 18px rgba(109, 44, 240, 0.12);
+  transform: translateY(-1px);
+}
+
+.catalog-task:active {
+  transform: translateY(1px);
 }
 
 .catalog-task.active {
@@ -469,12 +523,19 @@ svg {
 
 .catalog-task strong {
   font-size: 0.91rem;
+  transition: color 160ms ease;
 }
 
 .catalog-task small {
   color: #817a9c;
   font-size: 0.74rem;
   font-weight: 750;
+  transition: color 160ms ease;
+}
+
+.catalog-task:hover small,
+.catalog-task:focus-visible small {
+  color: #8b5cf6;
 }
 
 .task-difficulty {
