@@ -11,6 +11,8 @@ const testOutput = document.querySelector("#test-output");
 const tabButtons = document.querySelectorAll(".tab");
 const languageSelect = document.querySelector("#language-select");
 const syntaxHighlight = document.querySelector("#syntax-highlight");
+const problemPanel = document.querySelector(".problem-panel");
+const expandEditorButton = document.querySelector(".editor-expand-button");
 
 const sampleTests = [
   { nums: [2, 7, 11, 15], target: 9 },
@@ -91,50 +93,114 @@ const jsKeywords =
   "break|case|catch|class|const|continue|default|else|export|extends|finally|for|function|if|import|let|new|return|switch|throw|try|var|while|yield";
 const jsBuiltins = "Array|Map|Set|Number|String|Boolean|Object|Math";
 
-const applyPlainHighlight = (text, language) => {
-  if (language === "python") {
-    return text
-      .replace(new RegExp(`\\b(${pythonKeywords})\\b`, "g"), '<span class="tok-keyword">$1</span>')
-      .replace(new RegExp(`\\b(${pythonTypes})\\b`, "g"), '<span class="tok-type">$1</span>')
-      .replace(new RegExp(`\\b(${pythonBuiltins})\\b`, "g"), '<span class="tok-builtin">$1</span>')
-      .replace(/\b(\d+(?:\.\d+)?)\b/g, '<span class="tok-number">$1</span>')
-      .replace(/([+\-*/%=<>!]+)/g, '<span class="tok-operator">$1</span>');
+const tokenSets = {
+  python: {
+    keywords: new Set(pythonKeywords.split("|")),
+    builtins: new Set(pythonBuiltins.split("|")),
+    types: new Set(pythonTypes.split("|")),
+  },
+  javascript: {
+    keywords: new Set(jsKeywords.split("|")),
+    builtins: new Set(jsBuiltins.split("|")),
+    types: new Set(),
+  },
+};
+
+const wrapToken = (className, value) => `<span class="${className}">${escapeHtml(value)}</span>`;
+
+const readStringToken = (line, start) => {
+  const quote = line[start];
+  const triple = line.startsWith(quote.repeat(3), start);
+  const opener = triple ? quote.repeat(3) : quote;
+  let index = start + opener.length;
+
+  while (index < line.length) {
+    if (triple && line.startsWith(opener, index)) {
+      return line.slice(start, index + opener.length);
+    }
+
+    if (!triple && line[index] === quote) {
+      return line.slice(start, index + 1);
+    }
+
+    if (!triple && line[index] === "\\") {
+      index += 2;
+    } else {
+      index += 1;
+    }
   }
 
-  return text
-    .replace(new RegExp(`\\b(${jsKeywords})\\b`, "g"), '<span class="tok-keyword">$1</span>')
-    .replace(new RegExp(`\\b(${jsBuiltins})\\b`, "g"), '<span class="tok-builtin">$1</span>')
-    .replace(/\b(\d+(?:\.\d+)?)\b/g, '<span class="tok-number">$1</span>')
-    .replace(/([+\-*/%=<>!]+)/g, '<span class="tok-operator">$1</span>');
+  return line.slice(start);
 };
 
 const highlightLine = (line, language) => {
-  const marker = "\uE000";
-  const stashed = [];
-  const stash = (html) => {
-    const id = stashed.length;
-    stashed.push(html);
-    return `${marker}${id}${marker}`;
-  };
+  const sets = tokenSets[language];
+  const commentMarker = language === "python" ? "#" : "//";
+  let html = "";
+  let index = 0;
+  let previousWord = "";
 
-  let highlighted = escapeHtml(line);
-  highlighted = highlighted.replace(/("""[\s\S]*?"""|'''[\s\S]*?'''|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')/g, (match) =>
-    stash(`<span class="tok-string">${match}</span>`),
-  );
+  while (index < line.length) {
+    if (line.startsWith(commentMarker, index)) {
+      html += wrapToken("tok-comment", line.slice(index));
+      break;
+    }
 
-  if (language === "python") {
-    highlighted = highlighted.replace(/(#.*$)/, (match) => stash(`<span class="tok-comment">${match}</span>`));
-  } else {
-    highlighted = highlighted.replace(/(\/\/.*$)/, (match) => stash(`<span class="tok-comment">${match}</span>`));
+    const char = line[index];
+
+    if (char === "\"" || char === "'") {
+      const token = readStringToken(line, index);
+      html += wrapToken("tok-string", token);
+      index += token.length;
+      previousWord = "";
+      continue;
+    }
+
+    const numberMatch = line.slice(index).match(/^\d+(?:\.\d+)?/);
+    if (numberMatch) {
+      html += wrapToken("tok-number", numberMatch[0]);
+      index += numberMatch[0].length;
+      previousWord = "";
+      continue;
+    }
+
+    const wordMatch = line.slice(index).match(/^[A-Za-z_][A-Za-z0-9_]*/);
+    if (wordMatch) {
+      const word = wordMatch[0];
+      let className = "";
+
+      if ((language === "python" && previousWord === "def") || (language === "javascript" && previousWord === "function")) {
+        className = "tok-function";
+      } else if (language === "python" && previousWord === "class") {
+        className = "tok-class";
+      } else if (sets.keywords.has(word)) {
+        className = "tok-keyword";
+      } else if (sets.types.has(word)) {
+        className = "tok-type";
+      } else if (sets.builtins.has(word)) {
+        className = "tok-builtin";
+      }
+
+      html += className ? wrapToken(className, word) : escapeHtml(word);
+      previousWord = word;
+      index += word.length;
+      continue;
+    }
+
+    if (/^[+\-*/%=<>!&|:[\]{}().,]+$/.test(char)) {
+      html += wrapToken("tok-operator", char);
+      index += 1;
+      continue;
+    }
+
+    html += escapeHtml(char);
+    if (!/\s/.test(char)) {
+      previousWord = "";
+    }
+    index += 1;
   }
 
-  return highlighted
-    .split(new RegExp(`(${marker}\\d+${marker})`, "g"))
-    .map((part) => {
-      const match = part.match(new RegExp(`^${marker}(\\d+)${marker}$`));
-      return match ? stashed[Number(match[1])] : applyPlainHighlight(part, language);
-    })
-    .join("");
+  return html || " ";
 };
 
 const renderHighlight = () => {
@@ -300,6 +366,14 @@ tabButtons.forEach((button) => {
       tab.setAttribute("aria-selected", String(tab === button));
     });
   });
+});
+
+expandEditorButton.addEventListener("click", () => {
+  const isExpanded = problemPanel.classList.toggle("code-expanded");
+  expandEditorButton.setAttribute("aria-pressed", String(isExpanded));
+  expandEditorButton.setAttribute("aria-label", isExpanded ? "Collapse code editor" : "Expand code editor");
+  expandEditorButton.setAttribute("title", isExpanded ? "Collapse editor" : "Expand editor");
+  window.requestAnimationFrame(syncEditor);
 });
 
 languageSelect.addEventListener("change", () => {
