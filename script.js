@@ -31,6 +31,7 @@ const visibleTestCount = currentProblem?.visibleTestCount || 3;
 const allTests = currentProblem?.tests || [];
 const visibleTests = allTests.slice(0, visibleTestCount);
 const hiddenTests = allTests.slice(visibleTestCount);
+const visibleTestIds = new Set(visibleTests.map((test) => test.id));
 const codeTemplates = currentProblem?.initialCode || {};
 
 const codeCache = {
@@ -375,22 +376,27 @@ const runTests = async (tests) => {
   return results;
 };
 
-const formatResults = (results) =>
-  {
-    const failed = results.filter((item) => !item.passed);
+const formatResults = (results) => {
+  const failed = results.filter((item) => !item.passed);
 
-    if (!failed.length) {
-      return `PASS ${results.length}/${results.length} testcases passed`;
-    }
+  if (!failed.length) {
+    return `PASS ${results.length}/${results.length} testcases passed`;
+  }
 
-    return failed
-      .map((item) => {
+  const visibleFailures = failed.filter((item) => visibleTestIds.has(item.id));
+  const hiddenFailureCount = failed.length - visibleFailures.length;
+  const lines = visibleFailures.map((item) => {
       const icon = item.passed ? "PASS" : "FAIL";
       const actual = Array.isArray(item.result) ? `[${item.result.join(", ")}]` : String(item.result);
       return `${icon} Test ${item.index}: nums=[${item.nums.join(", ")}], target=${item.target}, output=${actual}`;
-    })
-    .join("\n");
-  };
+  });
+
+  if (hiddenFailureCount) {
+    lines.push(`FAIL ${hiddenFailureCount} hidden testcase${hiddenFailureCount > 1 ? "s" : ""} failed. Details are hidden.`);
+  }
+
+  return lines.join("\n");
+};
 
 const execute = async (tests, label, scope) => {
   setBusy(true);
@@ -422,7 +428,7 @@ const execute = async (tests, label, scope) => {
 };
 
 runButton.addEventListener("click", () => {
-  execute(visibleTests, "Visible tests", "visible");
+  execute(allTests, "All testcases", "all");
 });
 
 submitButton.addEventListener("click", () => {
