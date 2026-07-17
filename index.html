@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CodeMentor AI</title>
-    <link rel="stylesheet" href="./styles.css?v=9791f869" />
+    <link rel="stylesheet" href="./styles.css?v=case-data-2" />
   </head>
   <body>
     <div class="app-shell">
@@ -79,22 +79,19 @@
           </div>
 
           <article class="problem-statement">
-            <h1 id="problem-title">Two Sum</h1>
-            <p>Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.</p>
-            <p>You may assume that each input would have exactly one solution, and you may not use the same element twice.</p>
+            <h1 id="problem-title"><span id="problem-name-en">Two Sum</span><span id="problem-name-zh">两数之和</span></h1>
+            <p id="problem-description">Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target. You may assume that each input would have exactly one solution, and you may not use the same element twice.</p>
           </article>
 
           <div class="examples" aria-label="Examples">
             <div class="example-block">
               <h2>Example 1:</h2>
-              <pre><strong>Input:</strong> nums = [2, 7, 11, 15], target = 9
-<strong>Output:</strong> [0, 1]
-<strong>Explanation:</strong> Because nums[0] + nums[1] == 9,
-we return [0, 1].</pre>
+              <pre data-example="0"><strong>Input:</strong> nums = [2, 7, 11, 15], target = 9
+<strong>Output:</strong> [0, 1]</pre>
             </div>
             <div class="example-block">
               <h2>Example 2:</h2>
-              <pre><strong>Input:</strong> nums = [3, 2, 4], target = 6
+              <pre data-example="1"><strong>Input:</strong> nums = [3, 2, 4], target = 6
 <strong>Output:</strong> [1, 2]</pre>
             </div>
           </div>
@@ -102,13 +99,13 @@ we return [0, 1].</pre>
           <section class="editor-panel" aria-label="Code editor">
             <div class="editor-tabs">
               <div class="tabs-left" role="tablist" aria-label="Editor views">
-                <button class="tab active" type="button" role="tab" aria-selected="true">
+                <button class="tab active" type="button" role="tab" aria-selected="true" data-view-tab="code">
                   <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path d="m9 18-6-6 6-6M15 6l6 6-6 6M14 4l-4 16" />
                   </svg>
                   <span>Code</span>
                 </button>
-                <button class="tab" type="button" role="tab" aria-selected="false">
+                <button class="tab" type="button" role="tab" aria-selected="false" data-view-tab="testcases">
                   <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M9 3h6M10 3v5.3l-4.8 8A3 3 0 0 0 7.8 21h8.4a3 3 0 0 0 2.6-4.6l-4.8-8V3" />
                     <path d="M7.2 14h9.6" />
@@ -159,6 +156,17 @@ class Solution:
                 return [seen[need], i]
             seen[num] = i
         return []</textarea>
+              </div>
+            </div>
+            <div class="testcases-panel" id="testcases-panel" hidden>
+              <div class="testcase-summary" id="testcase-summary">
+                <strong>Score</strong>
+                <span>Run the code to see testcase results.</span>
+              </div>
+              <div class="public-testcases" id="public-testcases" aria-label="Visible testcases"></div>
+              <div class="hidden-testcases">
+                <div class="hidden-testcases-title">Hidden testcases</div>
+                <div class="hidden-testcase-grid" id="hidden-testcase-grid" aria-label="Hidden testcase results"></div>
               </div>
             </div>
             <div class="test-output" id="test-output" role="status" aria-live="polite">Ready</div>
@@ -238,7 +246,8 @@ class Solution:
         </aside>
       </main>
     </div>
+    <script src="./problems.js?v=case-data-2"></script>
     <script src="https://cdn.jsdelivr.net/pyodide/v314.0.2/full/pyodide.js"></script>
-    <script src="./script.js?v=9791f869"></script>
+    <script src="./script.js?v=case-data-2"></script>
   </body>
 </html>
