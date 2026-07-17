@@ -26,14 +26,15 @@ const difficultyLabel = document.querySelector(".difficulty");
 
 const tutorApiUrl = window.CODEMENTOR_CONFIG?.tutorApiUrl || "http://127.0.0.1:8787/api/tutor";
 const problemStore = window.CODEMENTOR_PROBLEMS || {};
-const currentProblem =
+const fallbackProblem =
   problemStore.items?.[problemStore.currentProblemId] || Object.values(problemStore.items || {})[0];
-const visibleTestCount = currentProblem?.visibleTestCount || 3;
-const allTests = currentProblem?.tests || [];
-const visibleTests = allTests.slice(0, visibleTestCount);
-const hiddenTests = allTests.slice(visibleTestCount);
-const visibleTestIds = new Set(visibleTests.map((test) => test.id));
-const codeTemplates = currentProblem?.initialCode || {};
+let currentProblem = fallbackProblem;
+let visibleTestCount = currentProblem?.visibleTestCount || 3;
+let allTests = currentProblem?.tests || [];
+let visibleTests = allTests.slice(0, visibleTestCount);
+let hiddenTests = allTests.slice(visibleTestCount);
+let visibleTestIds = new Set(visibleTests.map((test) => test.id));
+let codeTemplates = currentProblem?.initialCode || {};
 
 const codeCache = {
   python: codeTemplates.python || codeEditor.value,
@@ -71,9 +72,140 @@ const setBusy = (isBusy) => {
 };
 
 const escapeHtml = (value) =>
-  value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-const formatArray = (value) => `[${value.join(", ")}]`;
+const cloneValue = (value) => (value === undefined ? undefined : JSON.parse(JSON.stringify(value)));
+
+const formatValue = (value) => {
+  if (value === undefined || value === null || value === "") {
+    return "-";
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  return JSON.stringify(value);
+};
+
+const formatArray = (value) => (Array.isArray(value) ? `[${value.map((item) => formatValue(item)).join(", ")}]` : formatValue(value));
+
+const deepEqual = (left, right) => JSON.stringify(left) === JSON.stringify(right);
+
+const safeIdentifier = (value, fallback) => (/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(value || "") ? value : fallback);
+
+const setCurrentProblem = (problem) => {
+  currentProblem = problem || fallbackProblem;
+  visibleTestCount = currentProblem?.visibleTestCount || 3;
+  allTests = currentProblem?.tests || [];
+  visibleTests = allTests.slice(0, visibleTestCount);
+  hiddenTests = allTests.slice(visibleTestCount);
+  visibleTestIds = new Set(visibleTests.map((test) => test.id));
+  codeTemplates = currentProblem?.initialCode || {};
+  codeCache.python = codeTemplates.python || "";
+  codeCache.javascript = codeTemplates.javascript || "";
+  latestResults = new Map();
+  latestScope = "none";
+};
+
+const parseFrontmatter = (markdown) => {
+  const match = markdown.match(/^---\n([\s\S]*?)\n---\n?/);
+  if (!match) {
+    return [{}, markdown];
+  }
+
+  const metadata = {};
+  match[1].split("\n").forEach((line) => {
+    const separatorIndex = line.indexOf(":");
+    if (separatorIndex === -1) {
+      return;
+    }
+
+    const key = line.slice(0, separatorIndex).trim();
+    const rawValue = line.slice(separatorIndex + 1).trim();
+    if (key) {
+      metadata[key] = rawValue;
+    }
+  });
+
+  return [metadata, markdown.slice(match[0].length)];
+};
+
+const extractSection = (markdown, title) => {
+  const lines = markdown.split("\n");
+  const startIndex = lines.findIndex((line) => line.trim().toLowerCase() === `## ${title}`.toLowerCase());
+  if (startIndex === -1) {
+    return "";
+  }
+
+  const body = [];
+  for (let index = startIndex + 1; index < lines.length; index += 1) {
+    if (lines[index].startsWith("## ")) {
+      break;
+    }
+    body.push(lines[index]);
+  }
+
+  return body.join("\n").trim();
+};
+
+const extractFencedBlock = (section, language = "") => {
+  const languagePattern = language ? language : "[A-Za-z0-9_-]*";
+  const match = section.match(new RegExp("```" + languagePattern + "\\s*\\n([\\s\\S]*?)\\n```", "i"));
+  return match ? match[1] : "";
+};
+
+const parseExamples = (section) => {
+  const blocks = section.split(/^###\s+Example\s+\d+\s*$/gim).map((block) => block.trim()).filter(Boolean);
+  return blocks.map((block) => {
+    const input = block.match(/^Input:\s*(.+)$/im)?.[1]?.trim() || "";
+    const output = block.match(/^Output:\s*(.+)$/im)?.[1]?.trim() || "";
+    return { input, output };
+  });
+};
+
+const parseListValue = (value) => value.split(",").map((item) => item.trim()).filter(Boolean);
+
+const parseMarkdownProblem = (markdown) => {
+  const [metadata, body] = parseFrontmatter(markdown);
+  const testsJson = extractFencedBlock(extractSection(body, "Tests"), "json");
+  const tests = testsJson ? JSON.parse(testsJson) : [];
+  const examples = parseExamples(extractSection(body, "Examples"));
+  const inputParams = parseListValue(metadata.inputParams || "");
+
+  return {
+    id: metadata.id,
+    category: metadata.category,
+    difficulty: metadata.difficulty,
+    englishName: metadata.englishName,
+    chineseName: metadata.chineseName,
+    methodName: metadata.methodName,
+    javascriptFunctionName: metadata.javascriptFunctionName || metadata.methodName,
+    validation: metadata.validation || "array_exact",
+    inputParams,
+    visibleTestCount: Number(metadata.visibleTestCount || 3),
+    englishDescription: extractSection(body, "Description").replace(/\s+/g, " ").trim(),
+    examples,
+    initialCode: {
+      python: extractFencedBlock(extractSection(body, "Starter Code - Python"), "python"),
+      javascript: extractFencedBlock(extractSection(body, "Starter Code - JavaScript"), "javascript"),
+    },
+    tests,
+  };
+};
+
+const loadConfiguredProblem = async () => {
+  if (!problemStore.markdownProblemPath) {
+    return fallbackProblem;
+  }
+
+  const response = await fetch(problemStore.markdownProblemPath);
+  if (!response.ok) {
+    throw new Error(`Could not load ${problemStore.markdownProblemPath}`);
+  }
+
+  return parseMarkdownProblem(await response.text());
+};
 
 const renderProblem = () => {
   if (!currentProblem) {
@@ -83,7 +215,7 @@ const renderProblem = () => {
   document.title = `${currentProblem.englishName} | CodeMentor AI`;
   problemNameEn.textContent = currentProblem.englishName;
   problemNameZh.textContent = currentProblem.chineseName;
-  problemDescription.textContent = currentProblem.englishDescription;
+  problemDescription.innerHTML = renderInlineMarkdown(currentProblem.englishDescription);
   topicName.textContent = currentProblem.category;
   difficultyLabel.lastChild.textContent = currentProblem.difficulty;
 
@@ -94,6 +226,7 @@ const renderProblem = () => {
       return;
     }
 
+    exampleNode.closest(".example-block").hidden = false;
     exampleNode.innerHTML = `<strong>Input:</strong> ${escapeHtml(example.input)}\n<strong>Output:</strong> ${escapeHtml(example.output)}`;
   });
 
@@ -102,21 +235,75 @@ const renderProblem = () => {
 
 const getCaseResult = (test) => latestResults.get(test.id);
 
+const getTestInput = (test) => {
+  if (test.input && typeof test.input === "object") {
+    return test.input;
+  }
+
+  const input = {};
+  if ("nums" in test) {
+    input.nums = test.nums;
+  }
+  if ("target" in test) {
+    input.target = test.target;
+  }
+  if ("s" in test) {
+    input.s = test.s;
+  }
+  if ("t" in test) {
+    input.t = test.t;
+  }
+  if ("n" in test) {
+    input.n = test.n;
+  }
+  return input;
+};
+
+const getInputParams = () => {
+  if (currentProblem?.inputParams?.length) {
+    return currentProblem.inputParams;
+  }
+
+  if (currentProblem?.validation === "two_sum_indices" || currentProblem?.methodName === "twoSum") {
+    return ["nums", "target"];
+  }
+
+  return ["nums"];
+};
+
+const getTestArgs = (test) => {
+  const input = getTestInput(test);
+  return getInputParams().map((name) => cloneValue(input[name]));
+};
+
+const getExpected = (test) => test.expected;
+
+const formatCaseInput = (test) => {
+  if (test.displayInput) {
+    return test.displayInput;
+  }
+
+  const input = getTestInput(test);
+  return getInputParams()
+    .filter((name) => input[name] !== undefined)
+    .map((name) => `${name} = ${formatValue(input[name])}`)
+    .join(", ");
+};
+
 const renderTestcases = () => {
   publicTestcases.innerHTML = visibleTests
     .map((test, index) => {
       const result = getCaseResult(test);
       const state = result ? (result.passed ? "pass" : "fail") : "pending";
-      const actual = result ? formatArray(Array.isArray(result.result) ? result.result : []) : "-";
+      const actual = result ? formatValue(result.result) : "-";
       const status = result ? (result.passed ? "PASS" : "FAIL") : "READY";
 
       return `
         <article class="testcase-card ${state}">
           <h3><span>Case ${index + 1}</span><span class="case-status">${status}</span></h3>
-          <pre class="case-detail">nums = ${formatArray(test.nums)}
-target = ${test.target}
-expected = ${formatArray(test.expected)}
-actual = ${actual}</pre>
+          <pre class="case-detail">${escapeHtml(formatCaseInput(test))}
+expected = ${escapeHtml(formatValue(getExpected(test)))}
+actual = ${escapeHtml(actual)}</pre>
         </article>
       `;
     })
@@ -287,13 +474,14 @@ const syncEditor = () => {
 
 const getJavaScriptSolution = () => {
   const source = codeEditor.value;
+  const functionName = safeIdentifier(currentProblem?.javascriptFunctionName || currentProblem?.methodName || "twoSum", "twoSum");
   const factory = new Function(
-    `"use strict";\n${source}\nreturn typeof twoSum === "function" ? twoSum : null;`,
+    `"use strict";\n${source}\nreturn typeof ${functionName} === "function" ? ${functionName} : null;`,
   );
   const solution = factory();
 
   if (typeof solution !== "function") {
-    throw new Error("Define a function named twoSum(nums, target).");
+    throw new Error(`Define a function named ${functionName}.`);
   }
 
   return solution;
@@ -316,7 +504,8 @@ const loadPythonRuntime = async () => {
 
 const runPythonCase = async (test) => {
   const pyodide = await loadPythonRuntime();
-  pyodide.globals.set("__case_json", JSON.stringify({ nums: test.nums, target: test.target }));
+  const methodName = safeIdentifier(currentProblem?.methodName || "twoSum", "twoSum");
+  pyodide.globals.set("__case_json", JSON.stringify({ args: getTestArgs(test) }));
 
   const rawResult = pyodide.runPython(`
 import json as __json
@@ -324,7 +513,10 @@ import json as __json
 ${codeEditor.value}
 
 __case = __json.loads(__case_json)
-__result = Solution().twoSum(__case["nums"], __case["target"])
+__args = __case["args"]
+__result = Solution().${methodName}(*__args)
+if __result is None and __args:
+    __result = __args[0]
 __result
 `);
 
@@ -334,10 +526,13 @@ __result
     rawResult.destroy();
   }
 
-  return Array.from(result || []);
+  return result;
 };
 
-const isValidTwoSum = (result, nums, target) => {
+const isValidTwoSum = (result, test) => {
+  const input = getTestInput(test);
+  const nums = input.nums;
+  const target = input.target;
   if (!Array.isArray(result) || result.length !== 2) {
     return false;
   }
@@ -355,23 +550,34 @@ const isValidTwoSum = (result, nums, target) => {
   );
 };
 
+const isValidResult = (result, test) => {
+  if (currentProblem?.validation === "two_sum_indices") {
+    return isValidTwoSum(result, test);
+  }
+
+  return deepEqual(result, getExpected(test));
+};
+
 const runTests = async (tests) => {
   const language = languageSelect.value;
   const jsSolution = language === "javascript" ? getJavaScriptSolution() : null;
   const results = [];
 
   for (const [index, test] of tests.entries()) {
-    const result = language === "python" ? await runPythonCase(test) : jsSolution([...test.nums], test.target);
-    const passed = isValidTwoSum(result, test.nums, test.target);
+    const args = getTestArgs(test);
+    let result = language === "python" ? await runPythonCase(test) : jsSolution(...args);
+    if (result === undefined && args.length && Array.isArray(args[0])) {
+      result = args[0];
+    }
+    const passed = isValidResult(result, test);
 
     results.push({
       id: test.id,
       index: index + 1,
       passed,
       result,
-      nums: test.nums,
-      target: test.target,
-      expected: test.expected,
+      input: getTestInput(test),
+      expected: getExpected(test),
     });
   }
 
@@ -389,8 +595,8 @@ const formatResults = (results) => {
   const hiddenFailureCount = failed.length - visibleFailures.length;
   const lines = visibleFailures.map((item) => {
       const icon = item.passed ? "PASS" : "FAIL";
-      const actual = Array.isArray(item.result) ? `[${item.result.join(", ")}]` : String(item.result);
-      return `${icon} Test ${item.index}: nums=[${item.nums.join(", ")}], target=${item.target}, output=${actual}`;
+      const test = visibleTests.find((candidate) => candidate.id === item.id);
+      return `${icon} Test ${item.index}: input=${test ? formatCaseInput(test) : "-"}, output=${formatValue(item.result)}`;
   });
 
   if (hiddenFailureCount) {
@@ -456,9 +662,8 @@ const buildTestStateContext = () => {
         return {
           index: index + 1,
           passed: result.passed,
-          nums: test.nums,
-          target: test.target,
-          expected: test.expected,
+          input: formatCaseInput(test),
+          expected: formatValue(getExpected(test)),
           actual: formatResultValue(result.result),
         };
       })
@@ -501,7 +706,7 @@ const execute = async (tests, label, scope) => {
     latestResults = new Map(
       tests.map((test, index) => [
         test.id,
-        { index: index + 1, passed: false, result: "Error", nums: test.nums, target: test.target },
+        { id: test.id, index: index + 1, passed: false, result: "Error", input: getTestInput(test), expected: getExpected(test) },
       ]),
     );
     renderTestcases();
@@ -547,11 +752,92 @@ expandEditorButton.addEventListener("click", () => {
 languageSelect.addEventListener("change", () => {
   codeCache[currentLanguage] = codeEditor.value;
   currentLanguage = languageSelect.value;
-  codeEditor.value = codeCache[currentLanguage] || codeTemplates[currentLanguage];
+  codeEditor.value = codeCache[currentLanguage] || codeTemplates[currentLanguage] || "";
   setOutput(`${languageSelect.options[languageSelect.selectedIndex].text} mode ready`, "");
   setStatus("Ready");
   syncEditor();
 });
+
+const renderInlineMarkdown = (text) => {
+  let html = escapeHtml(text);
+  html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
+  html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  html = html.replace(/\*([^*]+)\*/g, "<em>$1</em>");
+  return html;
+};
+
+const renderMarkdown = (text) => {
+  const lines = String(text).replace(/\r\n/g, "\n").split("\n");
+  const html = [];
+  let index = 0;
+
+  while (index < lines.length) {
+    const line = lines[index];
+
+    if (!line.trim()) {
+      index += 1;
+      continue;
+    }
+
+    if (line.trim().startsWith("```")) {
+      const language = line.trim().slice(3).trim();
+      const codeLines = [];
+      index += 1;
+      while (index < lines.length && !lines[index].trim().startsWith("```")) {
+        codeLines.push(lines[index]);
+        index += 1;
+      }
+      index += 1;
+      html.push(`<pre class="md-code"><code data-language="${escapeHtml(language)}">${escapeHtml(codeLines.join("\n"))}</code></pre>`);
+      continue;
+    }
+
+    const unorderedItems = [];
+    while (index < lines.length && /^\s*[-*]\s+/.test(lines[index])) {
+      unorderedItems.push(lines[index].replace(/^\s*[-*]\s+/, ""));
+      index += 1;
+    }
+    if (unorderedItems.length) {
+      html.push(`<ul>${unorderedItems.map((item) => `<li>${renderInlineMarkdown(item)}</li>`).join("")}</ul>`);
+      continue;
+    }
+
+    const orderedItems = [];
+    while (index < lines.length && /^\s*\d+[.)]\s+/.test(lines[index])) {
+      orderedItems.push(lines[index].replace(/^\s*\d+[.)]\s+/, ""));
+      index += 1;
+    }
+    if (orderedItems.length) {
+      html.push(`<ol>${orderedItems.map((item) => `<li>${renderInlineMarkdown(item)}</li>`).join("")}</ol>`);
+      continue;
+    }
+
+    const paragraph = [];
+    while (
+      index < lines.length &&
+      lines[index].trim() &&
+      !lines[index].trim().startsWith("```") &&
+      !/^\s*[-*]\s+/.test(lines[index]) &&
+      !/^\s*\d+[.)]\s+/.test(lines[index])
+    ) {
+      paragraph.push(lines[index].trim());
+      index += 1;
+    }
+    html.push(`<p>${paragraph.map(renderInlineMarkdown).join("<br>")}</p>`);
+  }
+
+  return html.join("") || "<p></p>";
+};
+
+const renderBubbleContent = (bubble, text) => {
+  let content = bubble.querySelector(".bubble-content");
+  if (!content) {
+    content = document.createElement("div");
+    content.className = "bubble-content";
+    bubble.prepend(content);
+  }
+  content.innerHTML = renderMarkdown(text);
+};
 
 const createMessage = (text, owner) => {
   const message = document.createElement("div");
@@ -572,9 +858,10 @@ const createMessage = (text, owner) => {
 
   const bubble = document.createElement("div");
   bubble.className = "bubble";
-  bubble.textContent = text;
+  renderBubbleContent(bubble, text);
 
   const time = document.createElement("span");
+  time.className = "message-time";
   time.textContent = nowLabel();
   bubble.appendChild(time);
 
@@ -584,12 +871,12 @@ const createMessage = (text, owner) => {
 
 const setMessageText = (message, text) => {
   const bubble = message.querySelector(".bubble");
-  const time = bubble?.querySelector("span");
+  const time = bubble?.querySelector(".message-time");
   if (!bubble) {
     return;
   }
 
-  bubble.textContent = text;
+  renderBubbleContent(bubble, text);
   if (time) {
     bubble.appendChild(time);
   }
@@ -675,8 +962,41 @@ codeEditor.addEventListener("keydown", (event) => {
   }
 });
 
-testcasesPanel.hidden = false;
-renderProblem();
-renderTestcases();
-setStatus("Ready");
-syncEditor();
+const hydrateInitialTutorMessage = () => {
+  const initialBubble = chatThread.querySelector(".message.tutor .bubble");
+  const initialContent = initialBubble?.querySelector(".bubble-content");
+  if (!initialBubble || initialContent) {
+    return;
+  }
+
+  const time = initialBubble.querySelector(".message-time") || initialBubble.querySelector("span");
+  const text = Array.from(initialBubble.childNodes)
+    .filter((node) => node !== time)
+    .map((node) => node.textContent)
+    .join("")
+    .trim();
+  initialBubble.textContent = "";
+  renderBubbleContent(initialBubble, text);
+  if (time) {
+    time.className = "message-time";
+    initialBubble.appendChild(time);
+  }
+};
+
+const initializeApp = async () => {
+  try {
+    setCurrentProblem(await loadConfiguredProblem());
+  } catch (error) {
+    console.warn(error);
+    setCurrentProblem(fallbackProblem);
+  }
+
+  testcasesPanel.hidden = false;
+  hydrateInitialTutorMessage();
+  renderProblem();
+  renderTestcases();
+  setStatus("Ready");
+  syncEditor();
+};
+
+initializeApp();
