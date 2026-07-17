@@ -238,6 +238,11 @@ svg {
   background: rgba(109, 44, 240, 0.08);
 }
 
+.editor-expand-button[aria-pressed="true"] {
+  color: #ffffff;
+  background: var(--purple);
+}
+
 .profile-button {
   width: 38px;
   height: 38px;
@@ -255,13 +260,13 @@ svg {
   min-width: 0;
   min-height: 0;
   width: 100%;
-  max-width: 1450px;
+  max-width: 1720px;
   height: 100%;
   margin: 0 auto;
   display: grid;
   grid-template-columns: minmax(0, 1.43fr) minmax(330px, 0.9fr);
   gap: 18px;
-  padding: 16px 24px 18px;
+  padding: 16px 12px 18px;
   overflow: hidden;
 }
 
@@ -281,6 +286,24 @@ svg {
   display: flex;
   flex-direction: column;
   padding: 17px 20px 18px;
+}
+
+.problem-panel.code-expanded {
+  padding: 12px;
+}
+
+.problem-panel.code-expanded .problem-toolbar,
+.problem-panel.code-expanded .problem-statement,
+.problem-panel.code-expanded .examples {
+  display: none;
+}
+
+.problem-panel.code-expanded .editor-panel {
+  flex: 1 1 auto;
+}
+
+.problem-panel.code-expanded .execution-row {
+  margin-top: 10px;
 }
 
 .problem-toolbar,
