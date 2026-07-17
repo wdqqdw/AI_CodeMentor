@@ -27,3 +27,14 @@ curl -X POST http://127.0.0.1:8787/api/tutor \
   -H "Content-Type: application/json" \
   -d '{"message":"请只回复 OK"}'
 ```
+
+## Tutor prompt shape
+
+The frontend sends the current learning state to `/api/tutor`:
+
+- `message`: the learner's latest request
+- `problem`: problem name, Chinese name, category, difficulty, description, and public examples
+- `code`: current language, editor source, status label, and output panel text
+- `testState`: visible testcase details plus hidden testcase pass/fail summary only
+
+The backend wraps that payload with a system prompt that asks the model to act as a concise programming tutor, use the learner's current code and test state, and avoid revealing hidden testcase details.
