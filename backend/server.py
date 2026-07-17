@@ -15,6 +15,8 @@ from urllib.parse import urlparse
 
 from openai import OpenAI
 
+from prompt import build_tutor_messages
+
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 BACKEND_DIR = Path(__file__).resolve().parent
@@ -63,10 +65,7 @@ def json_bytes(payload: dict[str, Any]) -> bytes:
 def clean_messages(payload: dict[str, Any]) -> list[dict[str, str]]:
     raw_messages = payload.get("messages")
     if raw_messages is None:
-        message = str(payload.get("message", "")).strip()
-        if not message:
-            raise ValueError("Provide either 'message' or 'messages'.")
-        raw_messages = [{"role": "user", "content": message}]
+        return build_tutor_messages(payload)
 
     if not isinstance(raw_messages, list) or not raw_messages:
         raise ValueError("'messages' must be a non-empty list.")
@@ -112,6 +111,7 @@ class TutorHandler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Private-Network", "true")
         super().end_headers()
 
     def send_json(self, status: HTTPStatus, payload: dict[str, Any]) -> None:
