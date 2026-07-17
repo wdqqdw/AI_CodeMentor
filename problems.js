@@ -1,5 +1,6 @@
 window.CODEMENTOR_PROBLEMS = {
   currentProblemId: "two_sum",
+  markdownProblemPath: "./problems/quick_sort.md",
   items: {
     two_sum: {
       id: "two_sum",
@@ -7,6 +8,10 @@ window.CODEMENTOR_PROBLEMS = {
       difficulty: "Easy",
       englishName: "Two Sum",
       chineseName: "两数之和",
+      methodName: "twoSum",
+      javascriptFunctionName: "twoSum",
+      validation: "two_sum_indices",
+      inputParams: ["nums", "target"],
       englishDescription:
         "Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target. You may assume that each input would have exactly one solution, and you may not use the same element twice.",
       examples: [
