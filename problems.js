@@ -1,6 +1,78 @@
 window.CODEMENTOR_PROBLEMS = {
   currentProblemId: "two_sum",
   markdownProblemPath: "./problems/quick_sort.md",
+  problemCatalog: [
+    {
+      id: "sorting",
+      name: "Sorting",
+      chineseName: "排序",
+      items: [
+        {
+          id: "quick_sort",
+          englishName: "Quick Sort",
+          chineseName: "快速排序",
+          difficulty: "Medium",
+          path: "./problems/quick_sort.md",
+        },
+      ],
+    },
+    {
+      id: "binary_search",
+      name: "Binary Search",
+      chineseName: "二分查找",
+      items: [
+        {
+          id: "binary_search",
+          englishName: "Binary Search",
+          chineseName: "二分查找",
+          difficulty: "Easy",
+          path: "./problems/binary_search.md",
+        },
+      ],
+    },
+    {
+      id: "stack",
+      name: "Stack",
+      chineseName: "栈",
+      items: [
+        {
+          id: "valid_parentheses",
+          englishName: "Valid Parentheses",
+          chineseName: "有效括号",
+          difficulty: "Easy",
+          path: "./problems/valid_parentheses.md",
+        },
+      ],
+    },
+    {
+      id: "intervals",
+      name: "Intervals",
+      chineseName: "区间",
+      items: [
+        {
+          id: "merge_intervals",
+          englishName: "Merge Intervals",
+          chineseName: "合并区间",
+          difficulty: "Medium",
+          path: "./problems/merge_intervals.md",
+        },
+      ],
+    },
+    {
+      id: "dynamic_programming",
+      name: "Dynamic Programming",
+      chineseName: "动态规划",
+      items: [
+        {
+          id: "climbing_stairs",
+          englishName: "Climbing Stairs",
+          chineseName: "爬楼梯",
+          difficulty: "Easy",
+          path: "./problems/climbing_stairs.md",
+        },
+      ],
+    },
+  ],
   items: {
     two_sum: {
       id: "two_sum",
