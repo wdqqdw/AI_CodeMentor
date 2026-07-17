@@ -225,12 +225,29 @@ const loadProblemFromPath = async (path) => {
   return parseMarkdownProblem(await response.text());
 };
 
-const showCatalog = () => {
+const getCatalogProblemPath = (item) => item.path || `./problems/${item.id}.md`;
+
+const findCategoryIdForProblemPath = (path) => {
+  for (const category of problemCatalog) {
+    const match = (category.items || []).some((item) => getCatalogProblemPath(item) === path);
+    if (match) {
+      return category.id;
+    }
+  }
+
+  return "";
+};
+
+const showCatalog = ({ reset = false } = {}) => {
   problemPanel.classList.remove("code-expanded");
   expandEditorButton.setAttribute("aria-pressed", "false");
   expandEditorButton.setAttribute("aria-label", "Expand code editor");
   expandEditorButton.setAttribute("title", "Expand editor");
-  expandedCatalogCategory = "";
+  if (reset) {
+    expandedCatalogCategory = "";
+  } else if (!expandedCatalogCategory && activeProblemPath) {
+    expandedCatalogCategory = findCategoryIdForProblemPath(activeProblemPath);
+  }
   problemPanel.classList.add("catalog-mode");
   catalogView.hidden = false;
   openCatalogButton.setAttribute("aria-expanded", "true");
@@ -285,9 +302,9 @@ const renderCatalog = () => {
           <div class="catalog-tasks" ${isExpanded ? "" : "hidden"}>
             ${items
               .map((item) => {
-                const pathAttribute = item.path ? `data-problem-path="${escapeHtml(item.path)}"` : "";
+                const problemPath = getCatalogProblemPath(item);
                 return `
-                  <button class="catalog-task" type="button" ${pathAttribute}>
+                  <button class="catalog-task" type="button" data-problem-path="${escapeHtml(problemPath)}" data-parent-category-id="${escapeHtml(category.id)}">
                     <span>
                       <strong>${escapeHtml(item.englishName)}</strong>
                       <small>${escapeHtml([item.chineseName, item.tag].filter(Boolean).join(" · "))}</small>
@@ -870,6 +887,7 @@ catalogList.addEventListener("click", (event) => {
   if (problemButton) {
     const problemPath = problemButton.dataset.problemPath;
     if (problemPath) {
+      expandedCatalogCategory = problemButton.dataset.parentCategoryId || findCategoryIdForProblemPath(problemPath);
       loadProblemIntoWorkspace(problemPath);
     }
   }
@@ -1147,6 +1165,7 @@ const initializeApp = async () => {
   renderTestcases();
   setStatus("Ready");
   syncEditor();
+  showCatalog({ reset: true });
 };
 
 initializeApp();
