@@ -5,250 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CodeMentor AI</title>
     <link rel="stylesheet" href="./styles.css" />
-    <style>
-      body {
-        font-size: 14px;
-      }
-
-      .topbar {
-        min-height: 76px;
-        padding: 12px 34px;
-        gap: 20px;
-      }
-
-      .brand-mark {
-        width: 40px;
-        height: 40px;
-      }
-
-      .brand-name {
-        font-size: 1.55rem;
-      }
-
-      .main-nav {
-        gap: 32px;
-        font-size: 0.92rem;
-      }
-
-      .main-nav a {
-        min-height: 40px;
-      }
-
-      .main-nav a.active {
-        padding: 0 24px;
-      }
-
-      .metric-pill {
-        min-height: 38px;
-        padding: 0 14px;
-        border-radius: 8px;
-      }
-
-      .profile-button {
-        width: 42px;
-        height: 42px;
-        font-size: 1.1rem;
-      }
-
-      .practice-layout {
-        max-width: 1480px;
-        grid-template-columns: minmax(0, 1.45fr) minmax(360px, 0.95fr);
-        gap: 22px;
-        padding: 22px 30px 34px;
-      }
-
-      .problem-panel {
-        padding: 22px 24px 24px;
-      }
-
-      .problem-statement {
-        padding-top: 16px;
-      }
-
-      .problem-statement h1 {
-        font-size: 1.85rem;
-        margin-bottom: 12px;
-      }
-
-      .problem-statement p {
-        font-size: 0.98rem;
-        margin-bottom: 9px;
-      }
-
-      .examples {
-        gap: 18px;
-        margin-top: 16px;
-        padding-top: 16px;
-      }
-
-      .example-block pre {
-        min-height: 86px;
-        padding: 12px 14px;
-        font-size: 0.82rem;
-      }
-
-      .editor-panel {
-        margin-top: 18px;
-      }
-
-      .editor-tabs,
-      .tabs-left,
-      .tab {
-        min-height: 44px;
-        height: 44px;
-      }
-
-      .tab {
-        padding: 0 16px;
-      }
-
-      .language-select {
-        height: 34px;
-      }
-
-      .code-surface.runnable {
-        min-height: 210px;
-        display: grid;
-        grid-template-columns: 54px minmax(0, 1fr);
-        padding: 0;
-        overflow: hidden;
-        background: #ffffff;
-      }
-
-      .line-gutter {
-        margin: 0;
-        padding: 13px 0;
-        color: #9691a8;
-        background: #faf9fd;
-        border-right: 1px solid #ede8f5;
-        text-align: center;
-        user-select: none;
-        font: 0.9rem/1.75 "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-      }
-
-      #code-editor {
-        width: 100%;
-        min-height: 210px;
-        resize: vertical;
-        padding: 13px 18px;
-        color: #19152d;
-        background: #ffffff;
-        border: 0;
-        outline: 0;
-        tab-size: 2;
-        font: 0.9rem/1.75 "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-      }
-
-      .test-output {
-        min-height: 38px;
-        max-height: 112px;
-        overflow: auto;
-        padding: 10px 14px;
-        white-space: pre-wrap;
-        color: #6f6888;
-        background: #faf9fd;
-        border-top: 1px solid var(--line);
-        font: 0.78rem/1.5 "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-      }
-
-      .test-output.pass {
-        color: #137344;
-        background: #f2fbf6;
-      }
-
-      .test-output.fail {
-        color: #a92c2c;
-        background: #fff5f5;
-      }
-
-      .execution-row {
-        gap: 16px;
-        margin-top: 18px;
-      }
-
-      .run-button,
-      .submit-button {
-        min-width: 124px;
-        height: 42px;
-      }
-
-      .status-message.fail {
-        color: #d93939;
-      }
-
-      .tutor-panel {
-        min-height: 620px;
-        grid-template-rows: 64px minmax(0, 1fr) auto auto;
-      }
-
-      .tutor-header {
-        padding: 0 22px;
-      }
-
-      .tutor-title h2 {
-        font-size: 1.15rem;
-      }
-
-      .chat-thread {
-        gap: 18px;
-        padding: 26px 20px;
-      }
-
-      .avatar {
-        width: 34px;
-        height: 34px;
-      }
-
-      .bubble {
-        max-width: min(78%, 400px);
-        padding: 12px 14px 10px;
-        font-size: 0.95rem;
-      }
-
-      .chat-composer {
-        grid-template-columns: minmax(0, 1fr) 50px;
-        gap: 14px;
-        padding: 16px 20px 10px;
-      }
-
-      .chat-composer input,
-      .send-button {
-        height: 48px;
-      }
-
-      .send-button {
-        width: 50px;
-      }
-
-      .fine-print {
-        padding-bottom: 14px;
-        font-size: 0.74rem;
-      }
-
-      @media (max-width: 1180px) {
-        .practice-layout {
-          grid-template-columns: 1fr;
-        }
-
-        .tutor-panel {
-          min-height: 520px;
-        }
-      }
-
-      @media (max-width: 760px) {
-        .practice-layout {
-          padding: 16px;
-        }
-
-        .examples {
-          grid-template-columns: 1fr;
-        }
-
-        .code-surface.runnable {
-          grid-template-columns: 42px minmax(0, 1fr);
-        }
-      }
-    </style>
   </head>
   <body>
     <div class="app-shell">
@@ -361,12 +117,11 @@ we return [0, 1].</pre>
                 </button>
               </div>
               <div class="editor-tools">
-                <button class="language-select" type="button">
-                  <span>JavaScript</span>
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="m6 9 6 6 6-6" />
-                  </svg>
-                </button>
+                <label class="visually-hidden" for="language-select">Programming language</label>
+                <select class="language-select" id="language-select" aria-label="Programming language">
+                  <option value="python" selected>Python</option>
+                  <option value="javascript">JavaScript</option>
+                </select>
                 <button class="icon-button light" type="button" aria-label="Editor settings" title="Editor settings">
                   <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" />
@@ -381,7 +136,7 @@ we return [0, 1].</pre>
               </div>
             </div>
 
-            <div class="code-surface runnable" aria-label="JavaScript code editor">
+            <div class="code-surface runnable" aria-label="Code editor">
               <pre class="line-gutter" aria-hidden="true" id="line-gutter">1
 2
 3
@@ -390,15 +145,21 @@ we return [0, 1].</pre>
 6
 7
 8</pre>
-              <textarea id="code-editor" spellcheck="false" aria-label="Edit solution code">function twoSum(nums, target) {
-  const seen = new Map();
+              <div class="editor-code-wrap">
+                <pre class="syntax-highlight" id="syntax-highlight" aria-hidden="true"></pre>
+                <textarea id="code-editor" spellcheck="false" aria-label="Edit solution code">from typing import List
 
-  for (let i = 0; i < nums.length; i++) {
-    const need = target - nums[i];
-    if (seen.has(need)) return [seen.get(need), i];
-    seen.set(nums[i], i);
-  }
-}</textarea>
+class Solution:
+    def twoSum(self, nums: List[int], target: int) -> List[int]:
+        seen = {}
+
+        for i, num in enumerate(nums):
+            need = target - num
+            if need in seen:
+                return [seen[need], i]
+            seen[num] = i
+        return []</textarea>
+              </div>
             </div>
             <div class="test-output" id="test-output" role="status" aria-live="polite">Ready</div>
           </section>
@@ -421,7 +182,7 @@ we return [0, 1].</pre>
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M20 6 9 17l-5-5" />
               </svg>
-              All testcases passed
+              Ready
             </span>
           </div>
         </section>
@@ -477,6 +238,7 @@ we return [0, 1].</pre>
         </aside>
       </main>
     </div>
+    <script src="https://cdn.jsdelivr.net/pyodide/v314.0.2/full/pyodide.js"></script>
     <script src="./script.js"></script>
   </body>
 </html>

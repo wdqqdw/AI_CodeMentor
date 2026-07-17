@@ -9,6 +9,8 @@ const codeEditor = document.querySelector("#code-editor");
 const lineGutter = document.querySelector("#line-gutter");
 const testOutput = document.querySelector("#test-output");
 const tabButtons = document.querySelectorAll(".tab");
+const languageSelect = document.querySelector("#language-select");
+const syntaxHighlight = document.querySelector("#syntax-highlight");
 
 const sampleTests = [
   { nums: [2, 7, 11, 15], target: 9 },
@@ -21,6 +23,38 @@ const submitTests = [
   { nums: [0, 4, 3, 0], target: 0 },
   { nums: [-1, -2, -3, -4, -5], target: -8 },
 ];
+
+const codeTemplates = {
+  python: `from typing import List
+
+class Solution:
+    def twoSum(self, nums: List[int], target: int) -> List[int]:
+        seen = {}
+
+        for i, num in enumerate(nums):
+            need = target - num
+            if need in seen:
+                return [seen[need], i]
+            seen[num] = i
+        return []`,
+  javascript: `function twoSum(nums, target) {
+  const seen = new Map();
+
+  for (let i = 0; i < nums.length; i++) {
+    const need = target - nums[i];
+    if (seen.has(need)) return [seen.get(need), i];
+    seen.set(nums[i], i);
+  }
+}`,
+};
+
+const codeCache = {
+  python: codeEditor.value,
+  javascript: codeTemplates.javascript,
+};
+
+let currentLanguage = languageSelect.value;
+let pyodideReadyPromise = null;
 
 const nowLabel = () =>
   new Intl.DateTimeFormat("en", {
@@ -40,12 +74,95 @@ const setOutput = (text, state = "") => {
   testOutput.textContent = text;
 };
 
+const setBusy = (isBusy) => {
+  runButton.disabled = isBusy;
+  submitButton.disabled = isBusy;
+  languageSelect.disabled = isBusy;
+};
+
+const escapeHtml = (value) =>
+  value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+const pythonKeywords =
+  "False|None|True|and|as|assert|async|await|break|class|continue|def|del|elif|else|except|finally|for|from|global|if|import|in|is|lambda|nonlocal|not|or|pass|raise|return|try|while|with|yield";
+const pythonBuiltins = "enumerate|len|range|dict|list|set|sum|min|max|print|zip|map|int|str|float|bool";
+const pythonTypes = "List|Dict|Set|Tuple|Optional";
+const jsKeywords =
+  "break|case|catch|class|const|continue|default|else|export|extends|finally|for|function|if|import|let|new|return|switch|throw|try|var|while|yield";
+const jsBuiltins = "Array|Map|Set|Number|String|Boolean|Object|Math";
+
+const applyPlainHighlight = (text, language) => {
+  if (language === "python") {
+    return text
+      .replace(new RegExp(`\\b(${pythonKeywords})\\b`, "g"), '<span class="tok-keyword">$1</span>')
+      .replace(new RegExp(`\\b(${pythonTypes})\\b`, "g"), '<span class="tok-type">$1</span>')
+      .replace(new RegExp(`\\b(${pythonBuiltins})\\b`, "g"), '<span class="tok-builtin">$1</span>')
+      .replace(/\b(\d+(?:\.\d+)?)\b/g, '<span class="tok-number">$1</span>')
+      .replace(/([+\-*/%=<>!]+)/g, '<span class="tok-operator">$1</span>');
+  }
+
+  return text
+    .replace(new RegExp(`\\b(${jsKeywords})\\b`, "g"), '<span class="tok-keyword">$1</span>')
+    .replace(new RegExp(`\\b(${jsBuiltins})\\b`, "g"), '<span class="tok-builtin">$1</span>')
+    .replace(/\b(\d+(?:\.\d+)?)\b/g, '<span class="tok-number">$1</span>')
+    .replace(/([+\-*/%=<>!]+)/g, '<span class="tok-operator">$1</span>');
+};
+
+const highlightLine = (line, language) => {
+  const marker = "\uE000";
+  const stashed = [];
+  const stash = (html) => {
+    const id = stashed.length;
+    stashed.push(html);
+    return `${marker}${id}${marker}`;
+  };
+
+  let highlighted = escapeHtml(line);
+  highlighted = highlighted.replace(/("""[\s\S]*?"""|'''[\s\S]*?'''|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')/g, (match) =>
+    stash(`<span class="tok-string">${match}</span>`),
+  );
+
+  if (language === "python") {
+    highlighted = highlighted.replace(/(#.*$)/, (match) => stash(`<span class="tok-comment">${match}</span>`));
+  } else {
+    highlighted = highlighted.replace(/(\/\/.*$)/, (match) => stash(`<span class="tok-comment">${match}</span>`));
+  }
+
+  return highlighted
+    .split(new RegExp(`(${marker}\\d+${marker})`, "g"))
+    .map((part) => {
+      const match = part.match(new RegExp(`^${marker}(\\d+)${marker}$`));
+      return match ? stashed[Number(match[1])] : applyPlainHighlight(part, language);
+    })
+    .join("");
+};
+
+const renderHighlight = () => {
+  const language = languageSelect.value;
+  syntaxHighlight.innerHTML = codeEditor.value
+    .split("\n")
+    .map((line) => highlightLine(line || " ", language))
+    .join("\n");
+};
+
 const syncLineNumbers = () => {
   const count = Math.max(8, codeEditor.value.split("\n").length);
   lineGutter.textContent = Array.from({ length: count }, (_, index) => index + 1).join("\n");
 };
 
-const getSolution = () => {
+const syncScroll = () => {
+  syntaxHighlight.scrollTop = codeEditor.scrollTop;
+  syntaxHighlight.scrollLeft = codeEditor.scrollLeft;
+  lineGutter.scrollTop = codeEditor.scrollTop;
+};
+
+const syncEditor = () => {
+  syncLineNumbers();
+  renderHighlight();
+  syncScroll();
+};
+
+const getJavaScriptSolution = () => {
   const source = codeEditor.value;
   const factory = new Function(
     `"use strict";\n${source}\nreturn typeof twoSum === "function" ? twoSum : null;`,
@@ -57,6 +174,44 @@ const getSolution = () => {
   }
 
   return solution;
+};
+
+const loadPythonRuntime = async () => {
+  if (!window.loadPyodide) {
+    throw new Error("Python runtime failed to load. Refresh the page and try again.");
+  }
+
+  if (!pyodideReadyPromise) {
+    setOutput("Loading Python runtime...", "");
+    pyodideReadyPromise = window.loadPyodide({
+      indexURL: "https://cdn.jsdelivr.net/pyodide/v314.0.2/full/",
+    });
+  }
+
+  return pyodideReadyPromise;
+};
+
+const runPythonCase = async (test) => {
+  const pyodide = await loadPythonRuntime();
+  pyodide.globals.set("__case_json", JSON.stringify({ nums: test.nums, target: test.target }));
+
+  const rawResult = pyodide.runPython(`
+import json as __json
+
+${codeEditor.value}
+
+__case = __json.loads(__case_json)
+__result = Solution().twoSum(__case["nums"], __case["target"])
+__result
+`);
+
+  const result = rawResult && typeof rawResult.toJs === "function" ? rawResult.toJs() : rawResult;
+
+  if (rawResult && typeof rawResult.destroy === "function") {
+    rawResult.destroy();
+  }
+
+  return Array.from(result || []);
 };
 
 const isValidTwoSum = (result, nums, target) => {
@@ -77,22 +232,25 @@ const isValidTwoSum = (result, nums, target) => {
   );
 };
 
-const runTests = (tests) => {
-  const solution = getSolution();
+const runTests = async (tests) => {
+  const language = languageSelect.value;
+  const jsSolution = language === "javascript" ? getJavaScriptSolution() : null;
+  const results = [];
 
-  return tests.map((test, index) => {
-    const nums = [...test.nums];
-    const result = solution(nums, test.target);
+  for (const [index, test] of tests.entries()) {
+    const result = language === "python" ? await runPythonCase(test) : jsSolution([...test.nums], test.target);
     const passed = isValidTwoSum(result, test.nums, test.target);
 
-    return {
+    results.push({
       index: index + 1,
       passed,
       result,
       nums: test.nums,
       target: test.target,
-    };
-  });
+    });
+  }
+
+  return results;
 };
 
 const formatResults = (results) =>
@@ -104,9 +262,11 @@ const formatResults = (results) =>
     })
     .join("\n");
 
-const execute = (tests, label) => {
+const execute = async (tests, label) => {
+  setBusy(true);
+
   try {
-    const results = runTests(tests);
+    const results = await runTests(tests);
     const passedCount = results.filter((item) => item.passed).length;
     const allPassed = passedCount === results.length;
 
@@ -115,6 +275,8 @@ const execute = (tests, label) => {
   } catch (error) {
     setOutput(error.message, "fail");
     setStatus("Code error", "fail");
+  } finally {
+    setBusy(false);
   }
 };
 
@@ -138,6 +300,15 @@ tabButtons.forEach((button) => {
       tab.setAttribute("aria-selected", String(tab === button));
     });
   });
+});
+
+languageSelect.addEventListener("change", () => {
+  codeCache[currentLanguage] = codeEditor.value;
+  currentLanguage = languageSelect.value;
+  codeEditor.value = codeCache[currentLanguage] || codeTemplates[currentLanguage];
+  setOutput(`${languageSelect.options[languageSelect.selectedIndex].text} mode ready`, "");
+  setStatus("Ready");
+  syncEditor();
 });
 
 const createMessage = (text, owner) => {
@@ -179,24 +350,25 @@ chatForm.addEventListener("submit", (event) => {
 
   chatThread.appendChild(createMessage(text, "user"));
   chatInput.value = "";
-  chatThread.scrollTop = chatThread.scrollHeight;
 
   window.setTimeout(() => {
     chatThread.appendChild(createMessage("OK", "tutor"));
-    chatThread.scrollTop = chatThread.scrollHeight;
   }, 250);
 });
 
-codeEditor.addEventListener("input", syncLineNumbers);
+codeEditor.addEventListener("input", syncEditor);
+codeEditor.addEventListener("scroll", syncScroll);
 codeEditor.addEventListener("keydown", (event) => {
   if (event.key === "Tab") {
     event.preventDefault();
     const start = codeEditor.selectionStart;
     const end = codeEditor.selectionEnd;
-    codeEditor.value = `${codeEditor.value.slice(0, start)}  ${codeEditor.value.slice(end)}`;
-    codeEditor.selectionStart = codeEditor.selectionEnd = start + 2;
-    syncLineNumbers();
+    const tabText = languageSelect.value === "python" ? "    " : "  ";
+    codeEditor.value = `${codeEditor.value.slice(0, start)}${tabText}${codeEditor.value.slice(end)}`;
+    codeEditor.selectionStart = codeEditor.selectionEnd = start + tabText.length;
+    syncEditor();
   }
 });
 
-syncLineNumbers();
+setStatus("Ready");
+syncEditor();
