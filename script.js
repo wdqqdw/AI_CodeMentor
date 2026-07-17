@@ -53,6 +53,7 @@ let latestScope = "none";
 let chatBusy = false;
 let activeProblemPath = problemStore.markdownProblemPath || "";
 let expandedCatalogCategory = "";
+const difficultyRank = { easy: 0, medium: 1, hard: 2 };
 
 const nowLabel = () =>
   new Intl.DateTimeFormat("en", {
@@ -229,6 +230,7 @@ const showCatalog = () => {
   expandEditorButton.setAttribute("aria-pressed", "false");
   expandEditorButton.setAttribute("aria-label", "Expand code editor");
   expandEditorButton.setAttribute("title", "Expand editor");
+  expandedCatalogCategory = "";
   problemPanel.classList.add("catalog-mode");
   catalogView.hidden = false;
   openCatalogButton.setAttribute("aria-expanded", "true");
@@ -243,6 +245,18 @@ const hideCatalog = () => {
 
 const difficultyClass = (difficulty) => String(difficulty || "").toLowerCase().replace(/\s+/g, "-");
 
+const sortCatalogItems = (items) =>
+  [...items].sort((left, right) => {
+    const leftRank = difficultyRank[String(left.difficulty || "").toLowerCase()] ?? 99;
+    const rightRank = difficultyRank[String(right.difficulty || "").toLowerCase()] ?? 99;
+
+    if (leftRank !== rightRank) {
+      return leftRank - rightRank;
+    }
+
+    return String(left.englishName || "").localeCompare(String(right.englishName || ""));
+  });
+
 const renderCatalog = () => {
   if (!catalogList) {
     return;
@@ -251,7 +265,7 @@ const renderCatalog = () => {
   catalogList.innerHTML = problemCatalog
     .map((category) => {
       const isExpanded = category.id === expandedCatalogCategory;
-      const items = category.items || [];
+      const items = sortCatalogItems(category.items || []);
       const countLabel = `${items.length} ${items.length === 1 ? "problem" : "problems"}`;
 
       return `
@@ -271,9 +285,9 @@ const renderCatalog = () => {
           <div class="catalog-tasks" ${isExpanded ? "" : "hidden"}>
             ${items
               .map((item) => {
-                const isActive = item.path === activeProblemPath || item.id === currentProblem?.id;
+                const pathAttribute = item.path ? `data-problem-path="${escapeHtml(item.path)}"` : "";
                 return `
-                  <button class="catalog-task ${isActive ? "active" : ""}" type="button" data-problem-path="${escapeHtml(item.path)}">
+                  <button class="catalog-task" type="button" ${pathAttribute}>
                     <span>
                       <strong>${escapeHtml(item.englishName)}</strong>
                       <small>${escapeHtml([item.chineseName, item.tag].filter(Boolean).join(" · "))}</small>
@@ -854,7 +868,10 @@ catalogList.addEventListener("click", (event) => {
 
   const problemButton = event.target.closest("[data-problem-path]");
   if (problemButton) {
-    loadProblemIntoWorkspace(problemButton.dataset.problemPath);
+    const problemPath = problemButton.dataset.problemPath;
+    if (problemPath) {
+      loadProblemIntoWorkspace(problemPath);
+    }
   }
 });
 

@@ -366,6 +366,8 @@ svg {
   gap: 12px;
   padding: 18px 22px 22px;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .catalog-category {
@@ -475,6 +477,17 @@ svg {
   padding: 0 12px 12px;
 }
 
+.catalog-tasks[hidden] {
+  display: none;
+}
+
+.catalog-category.expanded .catalog-tasks {
+  max-height: min(46vh, 520px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
 .catalog-task {
   min-height: 54px;
   display: flex;
@@ -509,12 +522,6 @@ svg {
   transform: translateY(1px);
 }
 
-.catalog-task.active {
-  border-color: rgba(109, 44, 240, 0.42);
-  background: #f5f0ff;
-  box-shadow: inset 3px 0 0 var(--purple);
-}
-
 .catalog-task span:first-child {
   min-width: 0;
   display: grid;
@@ -536,6 +543,27 @@ svg {
 .catalog-task:hover small,
 .catalog-task:focus-visible small {
   color: #8b5cf6;
+}
+
+.catalog-list::-webkit-scrollbar,
+.catalog-tasks::-webkit-scrollbar {
+  width: 8px;
+}
+
+.catalog-list::-webkit-scrollbar-track,
+.catalog-tasks::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.catalog-list::-webkit-scrollbar-thumb,
+.catalog-tasks::-webkit-scrollbar-thumb {
+  background: #d8cef1;
+  border-radius: 999px;
+}
+
+.catalog-list::-webkit-scrollbar-thumb:hover,
+.catalog-tasks::-webkit-scrollbar-thumb:hover {
+  background: #b99cf6;
 }
 
 .task-difficulty {
