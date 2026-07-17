@@ -23,9 +23,14 @@ const problemNameZh = document.querySelector("#problem-name-zh");
 const problemDescription = document.querySelector("#problem-description");
 const topicName = document.querySelector(".topic-link span");
 const difficultyLabel = document.querySelector(".difficulty");
+const catalogView = document.querySelector("#catalog-view");
+const catalogList = document.querySelector("#catalog-list");
+const openCatalogButton = document.querySelector("[data-action='open-catalog']");
+const closeCatalogButton = document.querySelector("[data-action='close-catalog']");
 
 const tutorApiUrl = window.CODEMENTOR_CONFIG?.tutorApiUrl || "http://127.0.0.1:8787/api/tutor";
 const problemStore = window.CODEMENTOR_PROBLEMS || {};
+const problemCatalog = problemStore.problemCatalog || [];
 const fallbackProblem =
   problemStore.items?.[problemStore.currentProblemId] || Object.values(problemStore.items || {})[0];
 let currentProblem = fallbackProblem;
@@ -46,6 +51,8 @@ let pyodideReadyPromise = null;
 let latestResults = new Map();
 let latestScope = "none";
 let chatBusy = false;
+let activeProblemPath = problemStore.markdownProblemPath || "";
+let expandedCatalogCategory = problemCatalog[0]?.id || "";
 
 const nowLabel = () =>
   new Intl.DateTimeFormat("en", {
@@ -205,6 +212,108 @@ const loadConfiguredProblem = async () => {
   }
 
   return parseMarkdownProblem(await response.text());
+};
+
+const loadProblemFromPath = async (path) => {
+  const response = await fetch(path);
+  if (!response.ok) {
+    throw new Error(`Could not load ${path}`);
+  }
+
+  activeProblemPath = path;
+  return parseMarkdownProblem(await response.text());
+};
+
+const showCatalog = () => {
+  problemPanel.classList.remove("code-expanded");
+  expandEditorButton.setAttribute("aria-pressed", "false");
+  expandEditorButton.setAttribute("aria-label", "Expand code editor");
+  expandEditorButton.setAttribute("title", "Expand editor");
+  problemPanel.classList.add("catalog-mode");
+  catalogView.hidden = false;
+  openCatalogButton.setAttribute("aria-expanded", "true");
+  renderCatalog();
+};
+
+const hideCatalog = () => {
+  problemPanel.classList.remove("catalog-mode");
+  catalogView.hidden = true;
+  openCatalogButton.setAttribute("aria-expanded", "false");
+};
+
+const difficultyClass = (difficulty) => String(difficulty || "").toLowerCase().replace(/\s+/g, "-");
+
+const renderCatalog = () => {
+  if (!catalogList) {
+    return;
+  }
+
+  catalogList.innerHTML = problemCatalog
+    .map((category) => {
+      const isExpanded = category.id === expandedCatalogCategory;
+      const items = category.items || [];
+      const countLabel = `${items.length} ${items.length === 1 ? "problem" : "problems"}`;
+
+      return `
+        <section class="catalog-category ${isExpanded ? "expanded" : ""}">
+          <button class="catalog-category-button" type="button" data-category-id="${escapeHtml(category.id)}" aria-expanded="${isExpanded}">
+            <span class="category-copy">
+              <strong>${escapeHtml(category.name)}</strong>
+              <span>${escapeHtml(category.chineseName || "")}</span>
+            </span>
+            <span class="category-meta">
+              <span>${countLabel}</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </span>
+          </button>
+          <div class="catalog-tasks" ${isExpanded ? "" : "hidden"}>
+            ${items
+              .map((item) => {
+                const isActive = item.path === activeProblemPath || item.id === currentProblem?.id;
+                return `
+                  <button class="catalog-task ${isActive ? "active" : ""}" type="button" data-problem-path="${escapeHtml(item.path)}">
+                    <span>
+                      <strong>${escapeHtml(item.englishName)}</strong>
+                      <small>${escapeHtml(item.chineseName || "")}</small>
+                    </span>
+                    <span class="task-difficulty ${difficultyClass(item.difficulty)}">${escapeHtml(item.difficulty || "")}</span>
+                  </button>
+                `;
+              })
+              .join("")}
+          </div>
+        </section>
+      `;
+    })
+    .join("");
+};
+
+const loadProblemIntoWorkspace = async (path) => {
+  setBusy(true);
+  setOutput("Loading problem...", "");
+
+  try {
+    setCurrentProblem(await loadProblemFromPath(path));
+    hideCatalog();
+    renderProblem();
+    renderTestcases();
+    setOutput("Ready", "");
+    setStatus("Ready");
+    tabButtons.forEach((tab) => {
+      const isCodeTab = tab.dataset.viewTab === "code";
+      tab.classList.toggle("active", isCodeTab);
+      tab.setAttribute("aria-selected", String(isCodeTab));
+    });
+    editorPanel.classList.remove("show-testcases");
+    window.requestAnimationFrame(syncEditor);
+  } catch (error) {
+    setOutput(error.message, "fail");
+    setStatus("Problem load failed", "fail");
+  } finally {
+    setBusy(false);
+  }
 };
 
 const renderProblem = () => {
@@ -723,6 +832,30 @@ runButton.addEventListener("click", () => {
 
 submitButton.addEventListener("click", () => {
   execute(allTests, "All testcases", "all");
+});
+
+openCatalogButton.addEventListener("click", (event) => {
+  event.preventDefault();
+  showCatalog();
+});
+
+closeCatalogButton.addEventListener("click", () => {
+  hideCatalog();
+});
+
+catalogList.addEventListener("click", (event) => {
+  const categoryButton = event.target.closest("[data-category-id]");
+  if (categoryButton) {
+    expandedCatalogCategory =
+      expandedCatalogCategory === categoryButton.dataset.categoryId ? "" : categoryButton.dataset.categoryId;
+    renderCatalog();
+    return;
+  }
+
+  const problemButton = event.target.closest("[data-problem-path]");
+  if (problemButton) {
+    loadProblemIntoWorkspace(problemButton.dataset.problemPath);
+  }
 });
 
 bookmarkButton.addEventListener("click", () => {
