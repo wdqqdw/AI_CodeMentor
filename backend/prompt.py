@@ -54,7 +54,7 @@ def _format_visible_results(results: Any) -> str:
             "\n".join(
                 [
                     f"- Case {item.get('index', '?')}: {status}",
-                    f"  input: nums = {_text(item.get('nums'))}, target = {_text(item.get('target'))}",
+                    f"  input: {_text(item.get('input'), 'not provided')}",
                     f"  expected: {_text(item.get('expected'))}",
                     f"  actual: {_text(item.get('actual'))}",
                 ]
