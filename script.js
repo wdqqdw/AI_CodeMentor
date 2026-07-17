@@ -24,6 +24,7 @@ const problemDescription = document.querySelector("#problem-description");
 const topicName = document.querySelector(".topic-link span");
 const difficultyLabel = document.querySelector(".difficulty");
 
+const tutorApiUrl = window.CODEMENTOR_CONFIG?.tutorApiUrl || "http://127.0.0.1:8787/api/tutor";
 const problemStore = window.CODEMENTOR_PROBLEMS || {};
 const currentProblem =
   problemStore.items?.[problemStore.currentProblemId] || Object.values(problemStore.items || {})[0];
@@ -43,6 +44,7 @@ let currentLanguage = languageSelect.value;
 let pyodideReadyPromise = null;
 let latestResults = new Map();
 let latestScope = "none";
+let chatBusy = false;
 
 const nowLabel = () =>
   new Intl.DateTimeFormat("en", {
@@ -398,6 +400,89 @@ const formatResults = (results) => {
   return lines.join("\n");
 };
 
+const formatResultValue = (value) => {
+  if (Array.isArray(value)) {
+    return formatArray(value);
+  }
+
+  if (value === undefined || value === null || value === "") {
+    return "-";
+  }
+
+  return String(value);
+};
+
+const buildProblemContext = () => ({
+  id: currentProblem?.id,
+  category: currentProblem?.category,
+  difficulty: currentProblem?.difficulty,
+  englishName: currentProblem?.englishName,
+  chineseName: currentProblem?.chineseName,
+  englishDescription: currentProblem?.englishDescription,
+  examples: currentProblem?.examples || [],
+});
+
+const buildTestStateContext = () => {
+  if (latestScope === "none" || !latestResults.size) {
+    return {
+      scope: "none",
+      passed: 0,
+      total: 0,
+      visible: [],
+      hidden: {
+        total: hiddenTests.length,
+        passed: 0,
+        failed: 0,
+      },
+    };
+  }
+
+  const results = Array.from(latestResults.values());
+  const passed = results.filter((item) => item.passed).length;
+  const hiddenResults = hiddenTests.map((test) => getCaseResult(test)).filter(Boolean);
+  const hiddenPassed = hiddenResults.filter((item) => item.passed).length;
+
+  return {
+    scope: latestScope,
+    passed,
+    total: results.length,
+    visible: visibleTests
+      .map((test, index) => {
+        const result = getCaseResult(test);
+        if (!result) {
+          return null;
+        }
+
+        return {
+          index: index + 1,
+          passed: result.passed,
+          nums: test.nums,
+          target: test.target,
+          expected: test.expected,
+          actual: formatResultValue(result.result),
+        };
+      })
+      .filter(Boolean),
+    hidden: {
+      total: hiddenTests.length,
+      passed: hiddenPassed,
+      failed: Math.max(0, hiddenResults.length - hiddenPassed),
+    },
+  };
+};
+
+const buildTutorPayload = (message) => ({
+  message,
+  problem: buildProblemContext(),
+  code: {
+    language: languageSelect.value,
+    source: codeEditor.value,
+    status: statusMessage.textContent.trim(),
+    output: testOutput.textContent.trim(),
+  },
+  testState: buildTestStateContext(),
+});
+
 const execute = async (tests, label, scope) => {
   setBusy(true);
 
@@ -497,8 +582,54 @@ const createMessage = (text, owner) => {
   return message;
 };
 
-chatForm.addEventListener("submit", (event) => {
+const setMessageText = (message, text) => {
+  const bubble = message.querySelector(".bubble");
+  const time = bubble?.querySelector("span");
+  if (!bubble) {
+    return;
+  }
+
+  bubble.textContent = text;
+  if (time) {
+    bubble.appendChild(time);
+  }
+};
+
+const scrollChatToBottom = () => {
+  chatThread.scrollTop = chatThread.scrollHeight;
+};
+
+const askTutor = async (message) => {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), 60000);
+
+  try {
+    const response = await fetch(tutorApiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(buildTutorPayload(message)),
+      signal: controller.signal,
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.error || "AI Tutor service returned an error.");
+    }
+
+    return data.message || "I did not receive a response.";
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+};
+
+chatForm.addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (chatBusy) {
+    return;
+  }
+
   const text = chatInput.value.trim();
 
   if (!text) {
@@ -507,10 +638,27 @@ chatForm.addEventListener("submit", (event) => {
 
   chatThread.appendChild(createMessage(text, "user"));
   chatInput.value = "";
+  chatBusy = true;
+  chatInput.disabled = true;
 
-  window.setTimeout(() => {
-    chatThread.appendChild(createMessage("OK", "tutor"));
-  }, 250);
+  const pendingMessage = createMessage("正在思考...", "tutor");
+  chatThread.appendChild(pendingMessage);
+  scrollChatToBottom();
+
+  try {
+    const reply = await askTutor(text);
+    setMessageText(pendingMessage, reply);
+  } catch (error) {
+    setMessageText(
+      pendingMessage,
+      `本地 AI Tutor 服务暂时不可用：${error.message}。请确认后端正在 http://127.0.0.1:8787 运行。`,
+    );
+  } finally {
+    chatBusy = false;
+    chatInput.disabled = false;
+    chatInput.focus();
+    scrollChatToBottom();
+  }
 });
 
 codeEditor.addEventListener("input", syncEditor);
