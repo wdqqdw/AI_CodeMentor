@@ -13,50 +13,35 @@ const languageSelect = document.querySelector("#language-select");
 const syntaxHighlight = document.querySelector("#syntax-highlight");
 const problemPanel = document.querySelector(".problem-panel");
 const expandEditorButton = document.querySelector(".editor-expand-button");
+const editorPanel = document.querySelector(".editor-panel");
+const testcasesPanel = document.querySelector("#testcases-panel");
+const publicTestcases = document.querySelector("#public-testcases");
+const hiddenTestcaseGrid = document.querySelector("#hidden-testcase-grid");
+const testcaseSummary = document.querySelector("#testcase-summary");
+const problemNameEn = document.querySelector("#problem-name-en");
+const problemNameZh = document.querySelector("#problem-name-zh");
+const problemDescription = document.querySelector("#problem-description");
+const topicName = document.querySelector(".topic-link span");
+const difficultyLabel = document.querySelector(".difficulty");
 
-const sampleTests = [
-  { nums: [2, 7, 11, 15], target: 9 },
-  { nums: [3, 2, 4], target: 6 },
-];
-
-const submitTests = [
-  ...sampleTests,
-  { nums: [3, 3], target: 6 },
-  { nums: [0, 4, 3, 0], target: 0 },
-  { nums: [-1, -2, -3, -4, -5], target: -8 },
-];
-
-const codeTemplates = {
-  python: `from typing import List
-
-class Solution:
-    def twoSum(self, nums: List[int], target: int) -> List[int]:
-        seen = {}
-
-        for i, num in enumerate(nums):
-            need = target - num
-            if need in seen:
-                return [seen[need], i]
-            seen[num] = i
-        return []`,
-  javascript: `function twoSum(nums, target) {
-  const seen = new Map();
-
-  for (let i = 0; i < nums.length; i++) {
-    const need = target - nums[i];
-    if (seen.has(need)) return [seen.get(need), i];
-    seen.set(nums[i], i);
-  }
-}`,
-};
+const problemStore = window.CODEMENTOR_PROBLEMS || {};
+const currentProblem =
+  problemStore.items?.[problemStore.currentProblemId] || Object.values(problemStore.items || {})[0];
+const visibleTestCount = currentProblem?.visibleTestCount || 3;
+const allTests = currentProblem?.tests || [];
+const visibleTests = allTests.slice(0, visibleTestCount);
+const hiddenTests = allTests.slice(visibleTestCount);
+const codeTemplates = currentProblem?.initialCode || {};
 
 const codeCache = {
-  python: codeEditor.value,
-  javascript: codeTemplates.javascript,
+  python: codeTemplates.python || codeEditor.value,
+  javascript: codeTemplates.javascript || "",
 };
 
 let currentLanguage = languageSelect.value;
 let pyodideReadyPromise = null;
+let latestResults = new Map();
+let latestScope = "none";
 
 const nowLabel = () =>
   new Intl.DateTimeFormat("en", {
@@ -84,6 +69,75 @@ const setBusy = (isBusy) => {
 
 const escapeHtml = (value) =>
   value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+const formatArray = (value) => `[${value.join(", ")}]`;
+
+const renderProblem = () => {
+  if (!currentProblem) {
+    return;
+  }
+
+  document.title = `${currentProblem.englishName} | CodeMentor AI`;
+  problemNameEn.textContent = currentProblem.englishName;
+  problemNameZh.textContent = currentProblem.chineseName;
+  problemDescription.textContent = currentProblem.englishDescription;
+  topicName.textContent = currentProblem.category;
+  difficultyLabel.lastChild.textContent = currentProblem.difficulty;
+
+  document.querySelectorAll("[data-example]").forEach((exampleNode) => {
+    const example = currentProblem.examples[Number(exampleNode.dataset.example)];
+    if (!example) {
+      exampleNode.closest(".example-block").hidden = true;
+      return;
+    }
+
+    exampleNode.innerHTML = `<strong>Input:</strong> ${escapeHtml(example.input)}\n<strong>Output:</strong> ${escapeHtml(example.output)}`;
+  });
+
+  codeEditor.value = codeTemplates[currentLanguage] || codeEditor.value;
+};
+
+const getCaseResult = (test) => latestResults.get(test.id);
+
+const renderTestcases = () => {
+  publicTestcases.innerHTML = visibleTests
+    .map((test, index) => {
+      const result = getCaseResult(test);
+      const state = result ? (result.passed ? "pass" : "fail") : "pending";
+      const actual = result ? formatArray(Array.isArray(result.result) ? result.result : []) : "-";
+      const status = result ? (result.passed ? "PASS" : "FAIL") : "READY";
+
+      return `
+        <article class="testcase-card ${state}">
+          <h3><span>Case ${index + 1}</span><span class="case-status">${status}</span></h3>
+          <pre class="case-detail">nums = ${formatArray(test.nums)}
+target = ${test.target}
+expected = ${formatArray(test.expected)}
+actual = ${actual}</pre>
+        </article>
+      `;
+    })
+    .join("");
+
+  hiddenTestcaseGrid.innerHTML = hiddenTests
+    .map((test, index) => {
+      const result = getCaseResult(test);
+      const state = result ? (result.passed ? "pass" : "fail") : "pending";
+      return `<div class="hidden-case ${state}" title="Hidden case ${visibleTestCount + index + 1}">${visibleTestCount + index + 1}</div>`;
+    })
+    .join("");
+
+  const results = Array.from(latestResults.values());
+  const passed = results.filter((item) => item.passed).length;
+  const total = latestScope === "all" ? allTests.length : visibleTests.length;
+  const label = latestScope === "all" ? "All testcases" : latestScope === "visible" ? "Visible testcases" : "Score";
+  const detail =
+    latestScope === "none"
+      ? "Run the code to see testcase results."
+      : `${passed}/${total} passed${latestScope === "visible" ? ". Hidden cases remain locked until Submit." : "."}`;
+
+  testcaseSummary.innerHTML = `<strong>${label}</strong><span>${detail}</span>`;
+};
 
 const pythonKeywords =
   "False|None|True|and|as|assert|async|await|break|class|continue|def|del|elif|else|except|finally|for|from|global|if|import|in|is|lambda|nonlocal|not|or|pass|raise|return|try|while|with|yield";
@@ -308,11 +362,13 @@ const runTests = async (tests) => {
     const passed = isValidTwoSum(result, test.nums, test.target);
 
     results.push({
+      id: test.id,
       index: index + 1,
       passed,
       result,
       nums: test.nums,
       target: test.target,
+      expected: test.expected,
     });
   }
 
@@ -320,15 +376,23 @@ const runTests = async (tests) => {
 };
 
 const formatResults = (results) =>
-  results
-    .map((item) => {
+  {
+    const failed = results.filter((item) => !item.passed);
+
+    if (!failed.length) {
+      return `PASS ${results.length}/${results.length} testcases passed`;
+    }
+
+    return failed
+      .map((item) => {
       const icon = item.passed ? "PASS" : "FAIL";
       const actual = Array.isArray(item.result) ? `[${item.result.join(", ")}]` : String(item.result);
       return `${icon} Test ${item.index}: nums=[${item.nums.join(", ")}], target=${item.target}, output=${actual}`;
     })
     .join("\n");
+  };
 
-const execute = async (tests, label) => {
+const execute = async (tests, label, scope) => {
   setBusy(true);
 
   try {
@@ -336,9 +400,20 @@ const execute = async (tests, label) => {
     const passedCount = results.filter((item) => item.passed).length;
     const allPassed = passedCount === results.length;
 
+    latestScope = scope;
+    latestResults = new Map(results.map((item) => [item.id, item]));
+    renderTestcases();
     setOutput(formatResults(results), allPassed ? "pass" : "fail");
     setStatus(allPassed ? `${label} passed` : `${passedCount}/${results.length} tests passed`, allPassed ? "pass" : "fail");
   } catch (error) {
+    latestScope = scope;
+    latestResults = new Map(
+      tests.map((test, index) => [
+        test.id,
+        { index: index + 1, passed: false, result: "Error", nums: test.nums, target: test.target },
+      ]),
+    );
+    renderTestcases();
     setOutput(error.message, "fail");
     setStatus("Code error", "fail");
   } finally {
@@ -347,11 +422,11 @@ const execute = async (tests, label) => {
 };
 
 runButton.addEventListener("click", () => {
-  execute(sampleTests, "Sample tests");
+  execute(visibleTests, "Visible tests", "visible");
 });
 
 submitButton.addEventListener("click", () => {
-  execute(submitTests, "All testcases");
+  execute(allTests, "All testcases", "all");
 });
 
 bookmarkButton.addEventListener("click", () => {
@@ -365,6 +440,8 @@ tabButtons.forEach((button) => {
       tab.classList.toggle("active", tab === button);
       tab.setAttribute("aria-selected", String(tab === button));
     });
+    editorPanel.classList.toggle("show-testcases", button.dataset.viewTab === "testcases");
+    window.requestAnimationFrame(syncEditor);
   });
 });
 
@@ -444,5 +521,8 @@ codeEditor.addEventListener("keydown", (event) => {
   }
 });
 
+testcasesPanel.hidden = false;
+renderProblem();
+renderTestcases();
 setStatus("Ready");
 syncEditor();
