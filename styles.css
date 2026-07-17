@@ -572,6 +572,10 @@ svg {
   color: #9a62e8;
 }
 
+.task-difficulty.hard {
+  color: #d89513;
+}
+
 .problem-panel.code-expanded {
   padding: 12px;
 }
@@ -650,6 +654,22 @@ svg {
   height: 7px;
   border-radius: 999px;
   background: var(--green);
+}
+
+.difficulty.medium {
+  color: #9a62e8;
+}
+
+.difficulty.medium span {
+  background: #9a62e8;
+}
+
+.difficulty.hard {
+  color: #d89513;
+}
+
+.difficulty.hard span {
+  background: #d89513;
 }
 
 .bookmark.active svg {

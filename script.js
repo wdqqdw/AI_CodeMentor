@@ -238,7 +238,25 @@ const findCategoryIdForProblemPath = (path) => {
   return "";
 };
 
-const showCatalog = ({ reset = false } = {}) => {
+const problemSlugFromPath = (path) =>
+  String(path || "")
+    .replace(/^\.\/problems\//, "")
+    .replace(/\.md$/, "");
+
+const setBrowserState = (state, mode = "push") => {
+  if (!window.history?.pushState || !window.history?.replaceState) {
+    return;
+  }
+
+  const url =
+    state.view === "problem" && state.path
+      ? `#problem=${encodeURIComponent(problemSlugFromPath(state.path))}`
+      : "#catalog";
+  const method = mode === "replace" ? "replaceState" : "pushState";
+  window.history[method](state, "", url);
+};
+
+const showCatalog = ({ reset = false, historyMode = "none" } = {}) => {
   problemPanel.classList.remove("code-expanded");
   expandEditorButton.setAttribute("aria-pressed", "false");
   expandEditorButton.setAttribute("aria-label", "Expand code editor");
@@ -252,6 +270,10 @@ const showCatalog = ({ reset = false } = {}) => {
   catalogView.hidden = false;
   openCatalogButton.setAttribute("aria-expanded", "true");
   renderCatalog();
+
+  if (historyMode !== "none") {
+    setBrowserState({ view: "catalog", expandedCatalogCategory }, historyMode);
+  }
 };
 
 const hideCatalog = () => {
@@ -321,11 +343,14 @@ const renderCatalog = () => {
     .join("");
 };
 
-const loadProblemIntoWorkspace = async (path) => {
+const loadProblemIntoWorkspace = async (path, { historyMode = "push", parentCategoryId = "" } = {}) => {
   setBusy(true);
   setOutput("Loading problem...", "");
 
   try {
+    if (parentCategoryId) {
+      expandedCatalogCategory = parentCategoryId;
+    }
     setCurrentProblem(await loadProblemFromPath(path));
     hideCatalog();
     renderProblem();
@@ -339,6 +364,10 @@ const loadProblemIntoWorkspace = async (path) => {
     });
     editorPanel.classList.remove("show-testcases");
     window.requestAnimationFrame(syncEditor);
+
+    if (historyMode !== "none") {
+      setBrowserState({ view: "problem", path, expandedCatalogCategory }, historyMode);
+    }
   } catch (error) {
     setOutput(error.message, "fail");
     setStatus("Problem load failed", "fail");
@@ -358,6 +387,7 @@ const renderProblem = () => {
   problemDescription.innerHTML = renderInlineMarkdown(currentProblem.englishDescription);
   topicName.textContent = currentProblem.category;
   difficultyLabel.lastChild.textContent = currentProblem.difficulty;
+  difficultyLabel.className = `difficulty ${difficultyClass(currentProblem.difficulty)}`;
 
   document.querySelectorAll("[data-example]").forEach((exampleNode) => {
     const example = currentProblem.examples[Number(exampleNode.dataset.example)];
@@ -867,7 +897,7 @@ submitButton.addEventListener("click", () => {
 
 openCatalogButton.addEventListener("click", (event) => {
   event.preventDefault();
-  showCatalog();
+  showCatalog({ historyMode: "push" });
 });
 
 closeCatalogButton.addEventListener("click", () => {
@@ -888,8 +918,26 @@ catalogList.addEventListener("click", (event) => {
     const problemPath = problemButton.dataset.problemPath;
     if (problemPath) {
       expandedCatalogCategory = problemButton.dataset.parentCategoryId || findCategoryIdForProblemPath(problemPath);
-      loadProblemIntoWorkspace(problemPath);
+      loadProblemIntoWorkspace(problemPath, { historyMode: "push", parentCategoryId: expandedCatalogCategory });
     }
+  }
+});
+
+window.addEventListener("popstate", (event) => {
+  const state = event.state;
+  if (!state) {
+    return;
+  }
+
+  if (state.view === "catalog") {
+    expandedCatalogCategory = state.expandedCatalogCategory || "";
+    showCatalog({ historyMode: "none" });
+    return;
+  }
+
+  if (state.view === "problem" && state.path) {
+    const parentCategoryId = state.expandedCatalogCategory || findCategoryIdForProblemPath(state.path);
+    loadProblemIntoWorkspace(state.path, { historyMode: "none", parentCategoryId });
   }
 });
 
@@ -1165,7 +1213,7 @@ const initializeApp = async () => {
   renderTestcases();
   setStatus("Ready");
   syncEditor();
-  showCatalog({ reset: true });
+  showCatalog({ reset: true, historyMode: "replace" });
 };
 
 initializeApp();
