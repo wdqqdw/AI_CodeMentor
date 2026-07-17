@@ -52,7 +52,7 @@ let latestResults = new Map();
 let latestScope = "none";
 let chatBusy = false;
 let activeProblemPath = problemStore.markdownProblemPath || "";
-let expandedCatalogCategory = problemCatalog[0]?.id || "";
+let expandedCatalogCategory = "";
 
 const nowLabel = () =>
   new Intl.DateTimeFormat("en", {
@@ -276,7 +276,7 @@ const renderCatalog = () => {
                   <button class="catalog-task ${isActive ? "active" : ""}" type="button" data-problem-path="${escapeHtml(item.path)}">
                     <span>
                       <strong>${escapeHtml(item.englishName)}</strong>
-                      <small>${escapeHtml(item.chineseName || "")}</small>
+                      <small>${escapeHtml([item.chineseName, item.tag].filter(Boolean).join(" · "))}</small>
                     </span>
                     <span class="task-difficulty ${difficultyClass(item.difficulty)}">${escapeHtml(item.difficulty || "")}</span>
                   </button>
