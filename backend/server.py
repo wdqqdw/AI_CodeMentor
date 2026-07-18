@@ -101,6 +101,10 @@ def stream_chat_text(messages: list[dict[str, str]]) -> str:
     return "".join(chunks)
 
 
+def format_raw_prompt(messages: list[dict[str, str]]) -> str:
+    return "\n\n".join(f"[{item['role']}]\n{item['content']}" for item in messages)
+
+
 class TutorHandler(BaseHTTPRequestHandler):
     server_version = "CodeMentorLocalBackend/0.1"
 
@@ -144,7 +148,7 @@ class TutorHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         path = urlparse(self.path).path
-        if path != "/api/tutor":
+        if path not in {"/api/tutor", "/api/debug-chat"}:
             self.send_json(HTTPStatus.NOT_FOUND, {"error": "Not found"})
             return
 
@@ -156,6 +160,18 @@ class TutorHandler(BaseHTTPRequestHandler):
             payload = json.loads(self.rfile.read(length).decode("utf-8"))
             messages = clean_messages(payload)
             content = stream_chat_text(messages)
+            if path == "/api/debug-chat":
+                self.send_json(
+                    HTTPStatus.OK,
+                    {
+                        "message": content,
+                        "model": MODEL,
+                        "messages": messages,
+                        "raw_prompt": format_raw_prompt(messages),
+                    },
+                )
+                return
+
             self.send_json(HTTPStatus.OK, {"message": content, "model": MODEL})
         except ValueError as error:
             self.send_json(HTTPStatus.BAD_REQUEST, {"error": str(error)})
