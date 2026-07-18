@@ -1302,6 +1302,10 @@ svg {
   white-space: nowrap;
 }
 
+.message-time.hidden {
+  display: none;
+}
+
 .chat-composer {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 44px;

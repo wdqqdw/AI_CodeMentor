@@ -117,6 +117,23 @@ textarea {
   font-weight: 750;
 }
 
+.entry-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.entry-meta span {
+  padding: 4px 8px;
+  color: #625a79;
+  background: #f8f6fd;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
 .debug-card {
   display: grid;
   gap: 10px;

@@ -1,15 +1,9 @@
 const backendUrl = "http://127.0.0.1:8787";
+const historyCharLimit = 100000;
 const statusNode = document.querySelector("#backend-status");
 const threadNode = document.querySelector("#debug-thread");
 const formNode = document.querySelector("#debug-form");
 const inputNode = document.querySelector("#debug-input");
-
-const nowLabel = () =>
-  new Intl.DateTimeFormat("en", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  }).format(new Date());
 
 const escapeHtml = (value) =>
   String(value)
@@ -22,66 +16,100 @@ const setStatus = (text, state = "") => {
   statusNode.className = state;
 };
 
-const clearEmptyState = () => {
-  const emptyState = threadNode.querySelector(".empty-state");
-  if (emptyState) {
-    emptyState.remove();
-  }
+const clearThread = () => {
+  threadNode.innerHTML = "";
 };
 
-const appendEntry = ({ prompt, output, error }) => {
-  clearEmptyState();
+const formatEntryTime = (value) => {
+  if (!value) {
+    return "";
+  }
 
-  const entry = document.createElement("article");
-  entry.className = "debug-entry";
-  entry.innerHTML = `
-    <span class="entry-time">${nowLabel()}</span>
+  return new Intl.DateTimeFormat("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(new Date(value));
+};
+
+const renderEmptyState = () => {
+  threadNode.innerHTML = `
+    <div class="empty-state">
+      <strong>No backend history yet.</strong>
+      <span>Send a message from the main AI Tutor or this debug page.</span>
+    </div>
+  `;
+};
+
+const renderEntry = (entry) => {
+  const article = document.createElement("article");
+  article.className = "debug-entry";
+  article.dataset.entryId = entry.id || "";
+
+  const source = entry.endpoint === "/api/debug-chat" ? "Backend Chat" : "Main Tutor";
+  const template = entry.template_used ? "template on" : "raw message";
+  const outputTitle = entry.error ? "Error" : "Model Output";
+  const outputClass = entry.error ? "error" : "output";
+
+  article.innerHTML = `
+    <span class="entry-time">${escapeHtml(formatEntryTime(entry.created_at))}</span>
+    <div class="entry-meta">
+      <span>${escapeHtml(source)}</span>
+      <span>${escapeHtml(template)}</span>
+      <span>${escapeHtml(entry.model || "")}</span>
+    </div>
     <section class="debug-card">
       <h2>Raw Prompt</h2>
-      <pre>${escapeHtml(prompt || "No prompt returned.")}</pre>
+      <pre>${escapeHtml(entry.raw_prompt || "No prompt returned.")}</pre>
     </section>
-    <section class="debug-card ${error ? "error" : "output"}">
-      <h2>${error ? "Error" : "Model Output"}</h2>
-      <pre>${escapeHtml(output || "")}</pre>
+    <section class="debug-card ${outputClass}">
+      <h2>${outputTitle}</h2>
+      <pre>${escapeHtml(entry.error || entry.message || "")}</pre>
     </section>
   `;
 
-  threadNode.appendChild(entry);
+  threadNode.appendChild(article);
+};
+
+const renderHistory = (entries) => {
+  clearThread();
+  if (!entries.length) {
+    renderEmptyState();
+    return;
+  }
+
+  entries.forEach(renderEntry);
   threadNode.scrollTop = threadNode.scrollHeight;
 };
 
+const loadHistory = async ({ quiet = false } = {}) => {
+  try {
+    const response = await fetch(`${backendUrl}/api/history?limit=${historyCharLimit}`);
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || "Could not load history.");
+    }
+
+    renderHistory(data.entries || []);
+    setStatus(`History loaded: ${data.count || 0} entries / ${historyCharLimit} chars`, "ok");
+  } catch (error) {
+    if (!quiet) {
+      setStatus("Local backend unavailable", "fail");
+      renderEmptyState();
+    }
+  }
+};
+
 const buildDebugPayload = (message) => ({
-  message,
-  problem: {
-    englishName: "Backend Debug Session",
-    chineseName: "后端调试会话",
-    category: "Debug",
-    difficulty: "Easy",
-    englishDescription: "A standalone page for testing the local AI Tutor backend and viewing raw prompts.",
-    examples: [
-      {
-        input: "message = \"请只回复 OK\"",
-        output: "OK",
-      },
-    ],
-  },
-  code: {
-    language: "python",
-    source: "class Solution:\\n    pass",
-    status: "Debug page",
-    output: "empty",
-  },
-  testState: {
-    scope: "none",
-    passed: 0,
-    total: 0,
-    visible: [],
-    hidden: {
-      total: 0,
-      passed: 0,
-      failed: 0,
+  messages: [
+    {
+      role: "user",
+      content: message,
     },
-  },
+  ],
 });
 
 const checkHealth = async () => {
@@ -107,7 +135,7 @@ formNode.addEventListener("submit", async (event) => {
   const button = formNode.querySelector("button");
   button.disabled = true;
   inputNode.disabled = true;
-  setStatus("Sending request...", "");
+  setStatus("Sending raw message...", "");
 
   try {
     const response = await fetch(`${backendUrl}/api/debug-chat`, {
@@ -121,17 +149,19 @@ formNode.addEventListener("submit", async (event) => {
     if (!response.ok) {
       throw new Error(data.error || "Debug request failed.");
     }
-    appendEntry({
-      prompt: data.raw_prompt || JSON.stringify(data.messages, null, 2),
-      output: data.message,
-    });
-    setStatus(`Local backend ready: ${data.model}`, "ok");
+    inputNode.value = "";
+    await loadHistory();
+    setStatus(`Raw message sent: ${data.model}`, "ok");
   } catch (error) {
-    appendEntry({
-      prompt: JSON.stringify(buildDebugPayload(text), null, 2),
-      output: `${error.message}\n\nMake sure the local backend is running at ${backendUrl}.`,
-      error: true,
-    });
+    const failedEntry = {
+      id: `local-error-${Date.now()}`,
+      created_at: new Date().toISOString(),
+      endpoint: "/api/debug-chat",
+      template_used: false,
+      raw_prompt: `[user]\n${text}`,
+      error: `${error.message}\n\nMake sure the local backend is running at ${backendUrl}.`,
+    };
+    renderHistory([failedEntry]);
     setStatus("Local backend unavailable", "fail");
   } finally {
     button.disabled = false;
@@ -141,3 +171,5 @@ formNode.addEventListener("submit", async (event) => {
 });
 
 checkHealth();
+loadHistory();
+window.setInterval(() => loadHistory({ quiet: true }), 5000);

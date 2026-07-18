@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AI Tutor Backend Chat</title>
-    <link rel="stylesheet" href="./backend-chat.css?v=debug-chat-1" />
+    <link rel="stylesheet" href="./backend-chat.css?v=debug-chat-2" />
   </head>
   <body>
     <main class="debug-app">
@@ -18,18 +18,18 @@
 
       <section class="debug-thread" id="debug-thread" aria-live="polite">
         <div class="empty-state">
-          <strong>Raw prompt and output will appear here.</strong>
-          <span>This page talks to http://127.0.0.1:8787 on your computer.</span>
+          <strong>Backend history will appear here.</strong>
+          <span>This page keeps the latest 100k characters from http://127.0.0.1:8787.</span>
         </div>
       </section>
 
       <form class="debug-composer" id="debug-form">
         <label class="visually-hidden" for="debug-input">Test backend prompt</label>
-        <textarea id="debug-input" rows="3" placeholder="Type a message to test the backend...">请只回复 OK，用来测试后端是否正常。</textarea>
+        <textarea id="debug-input" rows="3" placeholder="Type a raw backend message...">请只回复 OK，用来测试后端是否正常。</textarea>
         <button type="submit">Send</button>
       </form>
     </main>
 
-    <script src="./backend-chat.js?v=debug-chat-1"></script>
+    <script src="./backend-chat.js?v=debug-chat-2"></script>
   </body>
 </html>

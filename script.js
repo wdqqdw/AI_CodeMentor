@@ -62,6 +62,21 @@ const nowLabel = () =>
     hour12: true,
   }).format(new Date());
 
+const getLastMessageTimestamp = () => {
+  const groups = chatThread.querySelectorAll(".message-group[data-timestamp]");
+  const lastGroup = groups[groups.length - 1];
+  return lastGroup ? Number(lastGroup.dataset.timestamp) : 0;
+};
+
+const shouldDisplayMessageTime = (timestamp) => {
+  const previousTimestamp = getLastMessageTimestamp();
+  if (!previousTimestamp) {
+    return true;
+  }
+
+  return timestamp - previousTimestamp >= 3 * 60 * 1000;
+};
+
 const setStatus = (text, state = "pass") => {
   statusMessage.classList.toggle("fail", state === "fail");
   statusMessage.classList.toggle("pass", state !== "fail");
@@ -1056,12 +1071,21 @@ const renderBubbleContent = (bubble, text) => {
 };
 
 const createMessage = (text, owner) => {
+  const timestamp = Date.now();
   const group = document.createElement("div");
   group.className = `message-group ${owner}`;
+  group.dataset.timestamp = String(timestamp);
 
   const time = document.createElement("span");
   time.className = "message-time";
-  time.textContent = nowLabel();
+  time.textContent = new Intl.DateTimeFormat("en", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(new Date(timestamp));
+  if (!shouldDisplayMessageTime(timestamp)) {
+    time.classList.add("hidden");
+  }
   group.appendChild(time);
 
   const message = document.createElement("div");
