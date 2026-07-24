@@ -1,6 +1,6 @@
 window.CODEMENTOR_PROBLEMS = {
-  currentProblemId: "two_sum",
-  markdownProblemPath: "./problems/quick_sort.md",
+  currentProblemId: "boggle_solver",
+  markdownProblemPath: "./problems/boggle_solver.md",
   problemCatalog: [
   {
     "id": "array_hashing",
@@ -1082,6 +1082,14 @@ window.CODEMENTOR_PROBLEMS = {
         "chineseName": "单词搜索",
         "tag": "Grid DFS",
         "difficulty": "Medium"
+      },
+      {
+        "id": "boggle_solver",
+        "englishName": "Boggle Solver",
+        "chineseName": "棋盘单词搜索",
+        "tag": "Trie + Backtracking",
+        "difficulty": "Hard",
+        "path": "./problems/boggle_solver.md"
       },
       {
         "id": "palindrome_partitioning",

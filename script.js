@@ -17,6 +17,7 @@ const editorPanel = document.querySelector(".editor-panel");
 const testcasesPanel = document.querySelector("#testcases-panel");
 const publicTestcases = document.querySelector("#public-testcases");
 const hiddenTestcaseGrid = document.querySelector("#hidden-testcase-grid");
+const hiddenTestcasesSection = document.querySelector(".hidden-testcases");
 const testcaseSummary = document.querySelector("#testcase-summary");
 const problemNameEn = document.querySelector("#problem-name-en");
 const problemNameZh = document.querySelector("#problem-name-zh");
@@ -205,6 +206,7 @@ const parseMarkdownProblem = (markdown) => {
     methodName: metadata.methodName,
     javascriptFunctionName: metadata.javascriptFunctionName || metadata.methodName,
     validation: metadata.validation || "array_exact",
+    disclosureStyle: metadata.disclosureStyle || "default",
     inputParams,
     visibleTestCount: Number(metadata.visibleTestCount || 3),
     englishDescription: extractSection(body, "Description").replace(/\s+/g, " ").trim(),
@@ -476,6 +478,16 @@ const formatCaseInput = (test) => {
 };
 
 const renderTestcases = () => {
+  if (currentProblem?.disclosureStyle === "grouped_hints") {
+    renderGroupedHintTestcases();
+    return;
+  }
+
+  publicTestcases.classList.remove("grouped-testcases");
+  if (hiddenTestcasesSection) {
+    hiddenTestcasesSection.hidden = false;
+  }
+
   publicTestcases.innerHTML = visibleTests
     .map((test, index) => {
       const result = getCaseResult(test);
@@ -512,6 +524,74 @@ actual = ${escapeHtml(actual)}</pre>
       : `${passed}/${total} passed${latestScope === "visible" ? ". Hidden cases remain locked until Submit." : "."}`;
 
   testcaseSummary.innerHTML = `<strong>${label}</strong><span>${detail}</span>`;
+};
+
+const groupTests = (tests) => {
+  const groups = [];
+  const groupMap = new Map();
+
+  tests.forEach((test, index) => {
+    const name = test.group || "General";
+    if (!groupMap.has(name)) {
+      const group = { name, tests: [] };
+      groups.push(group);
+      groupMap.set(name, group);
+    }
+
+    groupMap.get(name).tests.push({ test, index });
+  });
+
+  return groups;
+};
+
+const renderGroupedHintTestcases = () => {
+  publicTestcases.classList.add("grouped-testcases");
+  if (hiddenTestcasesSection) {
+    hiddenTestcasesSection.hidden = true;
+  }
+
+  publicTestcases.innerHTML = groupTests(allTests)
+    .map((group) => {
+      const casesHtml = group.tests
+        .map(({ test, index }) => {
+          const result = getCaseResult(test);
+          const state = result ? (result.passed ? "pass" : "fail") : "pending";
+          const status = result ? (result.passed ? "PASS" : "FAIL") : "READY";
+          const hint = test.locked ? "" : test.hint || "";
+          const hintHtml = hint ? `<span class="case-hint">${escapeHtml(hint)}</span>` : "";
+
+          return `
+            <article class="hint-case ${state} ${hint ? "" : "no-hint"}">
+              <div>
+                <strong>Case ${index + 1}</strong>
+                ${hintHtml}
+              </div>
+              <span class="case-status">${status}</span>
+            </article>
+          `;
+        })
+        .join("");
+
+      return `
+        <section class="testcase-group">
+          <header>
+            <strong>${escapeHtml(group.name)}</strong>
+            <span>${group.tests.length} cases</span>
+          </header>
+          <div class="hint-case-list">${casesHtml}</div>
+        </section>
+      `;
+    })
+    .join("");
+
+  const results = Array.from(latestResults.values());
+  const passed = results.filter((item) => item.passed).length;
+  const detail =
+    latestScope === "none"
+      ? "Run the code to see grouped testcase results."
+      : `${passed}/${allTests.length} passed. Inputs and expected answers stay hidden.`;
+
+  testcaseSummary.innerHTML = `<strong>Grouped testcases</strong><span>${detail}</span>`;
 };
 
 const pythonKeywords =
@@ -735,9 +815,27 @@ const isValidTwoSum = (result, test) => {
   );
 };
 
+const normalizeStringSet = (value) => {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+
+  return [...new Set(value.map((item) => String(item)))].sort();
+};
+
+const isValidStringSet = (result, test) => {
+  const normalizedResult = normalizeStringSet(result);
+  const normalizedExpected = normalizeStringSet(getExpected(test));
+  return normalizedResult !== null && normalizedExpected !== null && deepEqual(normalizedResult, normalizedExpected);
+};
+
 const isValidResult = (result, test) => {
   if (currentProblem?.validation === "two_sum_indices") {
     return isValidTwoSum(result, test);
+  }
+
+  if (currentProblem?.validation === "string_set") {
+    return isValidStringSet(result, test);
   }
 
   return deepEqual(result, getExpected(test));
@@ -774,6 +872,10 @@ const formatResults = (results) => {
 
   if (!failed.length) {
     return `PASS ${results.length}/${results.length} testcases passed`;
+  }
+
+  if (currentProblem?.disclosureStyle === "grouped_hints") {
+    return `FAIL ${failed.length} testcase${failed.length > 1 ? "s" : ""} failed. Open Testcases to see category hints; inputs and expected answers are hidden.`;
   }
 
   const visibleFailures = failed.filter((item) => visibleTestIds.has(item.id));
