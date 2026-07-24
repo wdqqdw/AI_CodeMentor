@@ -22,6 +22,7 @@ const testcaseSummary = document.querySelector("#testcase-summary");
 const problemNameEn = document.querySelector("#problem-name-en");
 const problemNameZh = document.querySelector("#problem-name-zh");
 const problemDescription = document.querySelector("#problem-description");
+const examplesContainer = document.querySelector(".examples");
 const topicName = document.querySelector(".topic-link span");
 const difficultyLabel = document.querySelector(".difficulty");
 const catalogView = document.querySelector("#catalog-view");
@@ -193,7 +194,9 @@ const parseListValue = (value) => value.split(",").map((item) => item.trim()).fi
 const parseMarkdownProblem = (markdown) => {
   const [metadata, body] = parseFrontmatter(markdown);
   const testsJson = extractFencedBlock(extractSection(body, "Tests"), "json");
+  const visualExamplesJson = extractFencedBlock(extractSection(body, "Visual Examples"), "json");
   const tests = testsJson ? JSON.parse(testsJson) : [];
+  const visualExamples = visualExamplesJson ? JSON.parse(visualExamplesJson) : [];
   const examples = parseExamples(extractSection(body, "Examples"));
   const inputParams = parseListValue(metadata.inputParams || "");
 
@@ -209,8 +212,9 @@ const parseMarkdownProblem = (markdown) => {
     disclosureStyle: metadata.disclosureStyle || "default",
     inputParams,
     visibleTestCount: Number(metadata.visibleTestCount || 3),
-    englishDescription: extractSection(body, "Description").replace(/\s+/g, " ").trim(),
+    englishDescription: extractSection(body, "Description").trim(),
     examples,
+    visualExamples,
     initialCode: {
       python: extractFencedBlock(extractSection(body, "Starter Code - Python"), "python"),
       javascript: extractFencedBlock(extractSection(body, "Starter Code - JavaScript"), "javascript"),
@@ -409,12 +413,41 @@ const renderProblem = () => {
   document.title = `${currentProblem.englishName} | CodeMentor AI`;
   problemNameEn.textContent = currentProblem.englishName;
   problemNameZh.textContent = currentProblem.chineseName;
-  problemDescription.innerHTML = renderInlineMarkdown(currentProblem.englishDescription);
+  problemDescription.innerHTML = renderMarkdown(currentProblem.englishDescription);
   topicName.textContent = currentProblem.category;
   difficultyLabel.lastChild.textContent = currentProblem.difficulty;
   difficultyLabel.className = `difficulty ${difficultyClass(currentProblem.difficulty)}`;
 
-  document.querySelectorAll("[data-example]").forEach((exampleNode) => {
+  if (currentProblem.visualExamples?.length && examplesContainer) {
+    examplesContainer.classList.add("visual-examples");
+    examplesContainer.innerHTML = currentProblem.visualExamples
+      .map(
+        (example) => `
+          <article class="visual-example-card">
+            <figure>
+              <img src="${escapeHtml(example.image || "")}" alt="${escapeHtml(example.alt || "")}" loading="lazy" />
+            </figure>
+            <div class="visual-example-copy">
+              <h2>${escapeHtml(example.title || "Example")}</h2>
+              <p>${renderInlineMarkdown(example.caption || "")}</p>
+              <dl>
+                <div>
+                  <dt>Input</dt>
+                  <dd>${escapeHtml(example.input || "")}</dd>
+                </div>
+                <div>
+                  <dt>Output</dt>
+                  <dd>${escapeHtml(example.output || "")}</dd>
+                </div>
+              </dl>
+            </div>
+          </article>
+        `,
+      )
+      .join("");
+  } else {
+    examplesContainer?.classList.remove("visual-examples");
+    document.querySelectorAll("[data-example]").forEach((exampleNode) => {
     const example = currentProblem.examples[Number(exampleNode.dataset.example)];
     if (!example) {
       exampleNode.closest(".example-block").hidden = true;
@@ -423,7 +456,8 @@ const renderProblem = () => {
 
     exampleNode.closest(".example-block").hidden = false;
     exampleNode.innerHTML = `<strong>Input:</strong> ${escapeHtml(example.input)}\n<strong>Output:</strong> ${escapeHtml(example.output)}`;
-  });
+    });
+  }
 
   codeEditor.value = codeTemplates[currentLanguage] || codeEditor.value;
 };

@@ -706,7 +706,7 @@ svg {
   font-weight: 750;
 }
 
-.problem-statement p {
+.problem-description {
   max-width: none;
   width: 100%;
   margin: 0 0 6px;
@@ -716,6 +716,21 @@ svg {
   text-align: left;
 }
 
+.problem-description p {
+  margin: 0 0 8px;
+}
+
+.problem-description ul,
+.problem-description ol {
+  margin: 6px 0 10px;
+  padding-left: 18px;
+}
+
+.problem-description li + li {
+  margin-top: 4px;
+}
+
+.problem-description code,
 .problem-statement code {
   padding: 1px 5px;
   color: #5f24d6;
@@ -753,6 +768,82 @@ svg {
   border-radius: var(--radius);
   font: 650 0.75rem/1.42 "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   white-space: pre-wrap;
+}
+
+.examples.visual-examples {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+}
+
+.visual-example-card {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 20px rgba(39, 28, 74, 0.05);
+}
+
+.visual-example-card figure {
+  margin: 0;
+  background: #f8f5ff;
+  border-bottom: 1px solid var(--line);
+}
+
+.visual-example-card img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 12 / 7;
+  object-fit: cover;
+}
+
+.visual-example-copy {
+  display: grid;
+  gap: 7px;
+  padding: 10px 12px 12px;
+}
+
+.visual-example-copy h2 {
+  margin: 0;
+  color: #211b39;
+  font-size: 0.88rem;
+}
+
+.visual-example-copy p {
+  margin: 0;
+  color: #4a4168;
+  font-size: 0.78rem;
+  line-height: 1.42;
+}
+
+.visual-example-copy dl {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.visual-example-copy dl div {
+  display: grid;
+  gap: 2px;
+}
+
+.visual-example-copy dt {
+  color: var(--purple);
+  font-size: 0.68rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.visual-example-copy dd {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: #2f294b;
+  font: 650 0.68rem/1.35 "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .editor-panel {
@@ -1513,7 +1604,8 @@ svg {
     gap: 10px;
   }
 
-  .main-nav a.active {
+  .main-nav a.active,
+  .main-nav span.active {
     padding: 0 14px;
   }
 

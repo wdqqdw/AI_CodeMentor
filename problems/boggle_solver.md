@@ -14,17 +14,63 @@ visibleTestCount: 0
 
 ## Description
 
-Given a 2D board of lowercase letters and a dictionary `words`, return every word that can be formed by walking through adjacent board cells. From one cell you may move horizontally, vertically, or diagonally to any of its 8 neighbors. During one word path, each board cell may be used at most once. Return each found word once; the output order does not matter. Treat every board cell as a literal single character, so there is no special `Qu` tile rule.
+You are building a small Boggle-style word finder. You receive a 2D board of lowercase letters and a dictionary `words`. Your task is to return every dictionary word that can be formed by walking through adjacent cells on the board.
+
+What counts as a valid word path:
+
+- A word may start from any cell.
+- From the current cell, you may move to any of the 8 neighboring cells: up, down, left, right, or diagonal.
+- During one word path, the same board cell may be used at most once.
+- After finishing or abandoning one word path, those cells become available again for a different word.
+
+What your function should return:
+
+- Return each found dictionary word once, even if it appears more than once in `words` or can be formed by multiple paths.
+- The output order does not matter.
+- Treat every board cell as a literal single character. There is no special `Qu` tile rule in this version.
+
+This problem is intentionally deeper than a plain grid DFS. A simple solution can try each word one by one, but it may become slow when many words share prefixes. A stronger solution usually builds a Trie from `words`, then runs DFS from each board cell and stops early whenever the current path is not a valid prefix.
+
+Common mistakes to watch for:
+
+- Only checking 4 directions instead of all 8 directions.
+- Forgetting to unmark a visited cell when backtracking.
+- Returning duplicate words.
+- Allowing a path to reuse the same cell.
+- Revealing words in the wrong format, such as returning coordinates instead of strings.
+
+## Visual Examples
+
+```json
+[
+  {
+    "title": "Walking Through Neighboring Cells",
+    "image": "./assets/boggle-path-example.svg",
+    "alt": "A board path spelling SEARCH with horizontal, vertical, and diagonal moves.",
+    "caption": "The word SEARCH is formed by walking from one adjacent cell to the next. The path may bend, and diagonal moves are valid.",
+    "input": "board = [[\"s\",\"e\",\"t\",\"p\"],[\"a\",\"l\",\"a\",\"r\"],[\"t\",\"n\",\"h\",\"c\"]], words = [\"search\", \"seat\", \"path\"]",
+    "output": "[\"search\"]"
+  },
+  {
+    "title": "Visited Cells Cannot Be Reused",
+    "image": "./assets/boggle-reuse-rule.svg",
+    "alt": "A 2 by 2 board showing that a path may not reuse the same cell.",
+    "caption": "A path like A -> B -> D is valid because every cell is used once. A path like A -> B -> A is invalid because it returns to a cell already used in this word.",
+    "input": "board = [[\"a\",\"b\"],[\"c\",\"d\"]], words = [\"abd\", \"aba\", \"abcd\"]",
+    "output": "[\"abd\", \"abcd\"]"
+  }
+]
+```
 
 ## Examples
 
 ### Example 1
-Input: board = [["c","a","t","s"]], words = ["cat","cats","cast","at","dog"]
-Output: ["at","cat","cats"]
+Input: board = [["s","e","t","p"],["a","l","a","r"],["t","n","h","c"]], words = ["search", "share", "path"]
+Output: ["search"]
 
 ### Example 2
-Input: board = [["a","b"],["c","d"]], words = ["aba","abcd","acdb","aaa"]
-Output: ["abcd","acdb"]
+Input: board = [["a","b"],["c","d"]], words = ["abd", "aba", "abcd"]
+Output: ["abd", "abcd"]
 
 ## Starter Code - Python
 
