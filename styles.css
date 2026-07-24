@@ -288,6 +288,27 @@ svg {
   display: flex;
   flex-direction: column;
   padding: 17px 20px 18px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.problem-panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+.problem-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.problem-panel::-webkit-scrollbar-thumb {
+  background: #d8cef1;
+  border-radius: 999px;
+}
+
+.problem-panel::-webkit-scrollbar-thumb:hover {
+  background: #b99cf6;
 }
 
 .catalog-view[hidden] {
@@ -580,6 +601,7 @@ svg {
 
 .problem-panel.code-expanded {
   padding: 12px;
+  overflow: hidden;
 }
 
 .problem-panel.code-expanded .problem-toolbar,
