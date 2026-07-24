@@ -4,12 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CodeMentor AI</title>
-    <link rel="stylesheet" href="./styles.css?v=problem-catalog-9" />
+    <link rel="stylesheet" href="./styles.css?v=problem-catalog-10" />
   </head>
   <body>
     <div class="app-shell">
       <header class="topbar" aria-label="Primary navigation">
-        <a class="brand" href="#" aria-label="CodeMentor AI home">
+        <div class="brand" aria-label="CodeMentor AI home">
           <span class="brand-mark" aria-hidden="true">
             <svg viewBox="0 0 64 64" role="img">
               <path d="M32 3 58 18v28L32 61 6 46V18L32 3Z" />
@@ -18,13 +18,13 @@
             </svg>
           </span>
           <span class="brand-name">CodeMentor <strong>AI</strong></span>
-        </a>
+        </div>
 
         <nav class="main-nav" aria-label="Practice sections">
-          <a href="#">Dashboard</a>
-          <a class="active" href="#" aria-current="page">Practice</a>
-          <a href="#">Progress</a>
-          <a href="#">Bookmarks</a>
+          <span>Dashboard</span>
+          <span class="active" aria-current="page">Practice</span>
+          <span>Progress</span>
+          <span>Bookmarks</span>
         </nav>
 
         <div class="account-strip" aria-label="Account summary">
@@ -61,29 +61,10 @@
 
       <main class="practice-layout">
         <section class="problem-panel" aria-labelledby="problem-title">
-          <div class="catalog-view" id="catalog-view" hidden>
-            <div class="catalog-header">
-              <div>
-                <span>Practice Library</span>
-                <h1>Choose a Problem</h1>
-              </div>
-              <button class="catalog-close" type="button" data-action="close-catalog" aria-label="Back to current problem">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="m15 18-6-6 6-6" />
-                </svg>
-                <span>Back</span>
-              </button>
-            </div>
-            <div class="catalog-list" id="catalog-list" aria-label="Problem categories"></div>
-          </div>
-
           <div class="problem-toolbar">
-            <button class="topic-link" type="button" data-action="open-catalog" aria-label="Open problem list" aria-expanded="false">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="m15 18-6-6 6-6" />
-              </svg>
+            <div class="topic-link static-topic" aria-label="Current topic">
               <span>Array &amp; Hashing</span>
-            </button>
+            </div>
             <div class="problem-actions">
               <span class="difficulty"><span></span>Easy</span>
               <button class="icon-button bookmark" type="button" aria-label="Bookmark problem" title="Bookmark problem">
@@ -263,8 +244,8 @@ class Solution:
         </aside>
       </main>
     </div>
-    <script src="./problems.js?v=problem-catalog-9"></script>
+    <script src="./problems.js?v=problem-catalog-10"></script>
     <script src="https://cdn.jsdelivr.net/pyodide/v314.0.2/full/pyodide.js"></script>
-    <script src="./script.js?v=problem-catalog-9"></script>
+    <script src="./script.js?v=problem-catalog-10"></script>
   </body>
 </html>

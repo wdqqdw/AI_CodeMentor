@@ -133,7 +133,8 @@ svg {
   white-space: nowrap;
 }
 
-.main-nav a {
+.main-nav a,
+.main-nav span {
   min-height: 36px;
   display: inline-flex;
   align-items: center;
@@ -141,7 +142,8 @@ svg {
   color: rgba(255, 255, 255, 0.9);
 }
 
-.main-nav a.active {
+.main-nav a.active,
+.main-nav span.active {
   padding: 0 22px;
   background: rgba(134, 87, 255, 0.32);
 }
@@ -624,7 +626,12 @@ svg {
   border-radius: 0;
   font: inherit;
   font-weight: 750;
-  cursor: pointer;
+  cursor: default;
+}
+
+.static-topic {
+  display: inline-flex;
+  align-items: center;
 }
 
 .topic-link svg {

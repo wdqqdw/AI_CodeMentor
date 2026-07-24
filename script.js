@@ -274,6 +274,10 @@ const setBrowserState = (state, mode = "push") => {
 };
 
 const showCatalog = ({ reset = false, historyMode = "none" } = {}) => {
+  if (!catalogView || !openCatalogButton) {
+    return;
+  }
+
   problemPanel.classList.remove("code-expanded");
   expandEditorButton.setAttribute("aria-pressed", "false");
   expandEditorButton.setAttribute("aria-label", "Expand code editor");
@@ -294,6 +298,10 @@ const showCatalog = ({ reset = false, historyMode = "none" } = {}) => {
 };
 
 const hideCatalog = () => {
+  if (!catalogView || !openCatalogButton) {
+    return;
+  }
+
   problemPanel.classList.remove("catalog-mode");
   catalogView.hidden = true;
   openCatalogButton.setAttribute("aria-expanded", "false");
@@ -1012,51 +1020,39 @@ submitButton.addEventListener("click", () => {
   execute(allTests, "All testcases", "all");
 });
 
-openCatalogButton.addEventListener("click", (event) => {
-  event.preventDefault();
-  showCatalog({ historyMode: "push" });
-});
+if (openCatalogButton) {
+  openCatalogButton.addEventListener("click", (event) => {
+    event.preventDefault();
+    showCatalog({ historyMode: "push" });
+  });
+}
 
-closeCatalogButton.addEventListener("click", () => {
-  hideCatalog();
-});
+if (closeCatalogButton) {
+  closeCatalogButton.addEventListener("click", () => {
+    hideCatalog();
+  });
+}
 
-catalogList.addEventListener("click", (event) => {
-  const categoryButton = event.target.closest("[data-category-id]");
-  if (categoryButton) {
-    expandedCatalogCategory =
-      expandedCatalogCategory === categoryButton.dataset.categoryId ? "" : categoryButton.dataset.categoryId;
-    renderCatalog();
-    return;
-  }
-
-  const problemButton = event.target.closest("[data-problem-path]");
-  if (problemButton) {
-    const problemPath = problemButton.dataset.problemPath;
-    if (problemPath) {
-      expandedCatalogCategory = problemButton.dataset.parentCategoryId || findCategoryIdForProblemPath(problemPath);
-      loadProblemIntoWorkspace(problemPath, { historyMode: "push", parentCategoryId: expandedCatalogCategory });
+if (catalogList) {
+  catalogList.addEventListener("click", (event) => {
+    const categoryButton = event.target.closest("[data-category-id]");
+    if (categoryButton) {
+      expandedCatalogCategory =
+        expandedCatalogCategory === categoryButton.dataset.categoryId ? "" : categoryButton.dataset.categoryId;
+      renderCatalog();
+      return;
     }
-  }
-});
 
-window.addEventListener("popstate", (event) => {
-  const state = event.state;
-  if (!state) {
-    return;
-  }
-
-  if (state.view === "catalog") {
-    expandedCatalogCategory = state.expandedCatalogCategory || "";
-    showCatalog({ historyMode: "none" });
-    return;
-  }
-
-  if (state.view === "problem" && state.path) {
-    const parentCategoryId = state.expandedCatalogCategory || findCategoryIdForProblemPath(state.path);
-    loadProblemIntoWorkspace(state.path, { historyMode: "none", parentCategoryId });
-  }
-});
+    const problemButton = event.target.closest("[data-problem-path]");
+    if (problemButton) {
+      const problemPath = problemButton.dataset.problemPath;
+      if (problemPath) {
+        expandedCatalogCategory = problemButton.dataset.parentCategoryId || findCategoryIdForProblemPath(problemPath);
+        loadProblemIntoWorkspace(problemPath, { historyMode: "push", parentCategoryId: expandedCatalogCategory });
+      }
+    }
+  });
+}
 
 bookmarkButton.addEventListener("click", () => {
   const isActive = bookmarkButton.classList.toggle("active");
@@ -1331,7 +1327,6 @@ const initializeApp = async () => {
   renderTestcases();
   setStatus("Ready");
   syncEditor();
-  showCatalog({ reset: true, historyMode: "replace" });
 };
 
 initializeApp();
