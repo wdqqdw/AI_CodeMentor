@@ -58,18 +58,18 @@ svg {
   width: 100%;
   height: 100vh;
   display: grid;
-  grid-template-rows: 64px minmax(0, 1fr);
+  grid-template-rows: 54px minmax(0, 1fr);
   overflow: hidden;
 }
 
 .topbar {
   min-width: 0;
-  height: 64px;
+  height: 54px;
   display: grid;
-  grid-template-columns: minmax(210px, 1fr) auto minmax(250px, 1fr);
+  grid-template-columns: 1fr;
   align-items: center;
-  gap: 18px;
-  padding: 10px 30px;
+  gap: 0;
+  padding: 8px 30px;
   color: #ffffff;
   background:
     linear-gradient(90deg, rgba(255, 255, 255, 0.04), transparent 24%),
@@ -86,8 +86,8 @@ svg {
 }
 
 .brand-mark {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   flex: 0 0 auto;
 }
 
@@ -285,29 +285,37 @@ svg {
 }
 
 .problem-panel {
-  display: flex;
-  flex-direction: column;
-  padding: 17px 20px 18px;
+  display: grid;
+  grid-template-rows: minmax(190px, 0.92fr) minmax(280px, 1fr) auto;
+  gap: 12px;
+  padding: 14px 18px 16px;
+  overflow-x: hidden;
+  overflow-y: hidden;
+  overscroll-behavior: contain;
+}
+
+.learning-pane {
+  min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
-  overscroll-behavior: contain;
+  padding-right: 6px;
   scrollbar-gutter: stable;
 }
 
-.problem-panel::-webkit-scrollbar {
+.learning-pane::-webkit-scrollbar {
   width: 8px;
 }
 
-.problem-panel::-webkit-scrollbar-track {
+.learning-pane::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.problem-panel::-webkit-scrollbar-thumb {
+.learning-pane::-webkit-scrollbar-thumb {
   background: #d8cef1;
   border-radius: 999px;
 }
 
-.problem-panel::-webkit-scrollbar-thumb:hover {
+.learning-pane::-webkit-scrollbar-thumb:hover {
   background: #b99cf6;
 }
 
@@ -320,6 +328,7 @@ svg {
 }
 
 .problem-panel.catalog-mode > .problem-toolbar,
+.problem-panel.catalog-mode > .learning-pane,
 .problem-panel.catalog-mode > .problem-statement,
 .problem-panel.catalog-mode > .examples,
 .problem-panel.catalog-mode > .editor-panel,
@@ -600,10 +609,12 @@ svg {
 }
 
 .problem-panel.code-expanded {
+  grid-template-rows: minmax(0, 1fr) auto;
   padding: 12px;
   overflow: hidden;
 }
 
+.problem-panel.code-expanded .learning-pane,
 .problem-panel.code-expanded .problem-toolbar,
 .problem-panel.code-expanded .problem-statement,
 .problem-panel.code-expanded .examples {
