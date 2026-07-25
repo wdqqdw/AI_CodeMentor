@@ -64,6 +64,26 @@ curl http://127.0.0.1:8787/api/my-history \
   -H "Authorization: Bearer YOUR_SESSION_TOKEN"
 ```
 
+Record a structured Run or Submit event:
+
+```bash
+curl -X POST http://127.0.0.1:8787/api/activity \
+  -H "Content-Type: application/json" \
+  -H "Origin: https://wdqqdw.github.io" \
+  -H "Authorization: Bearer YOUR_SESSION_TOKEN" \
+  -d '{"event_type":"run","problem":{"englishName":"Boggle Solver"},"code":{"language":"python","source":"pass"},"testState":{"scope":"all","passed":0,"total":50}}'
+```
+
+Read structured activity records:
+
+```bash
+curl http://127.0.0.1:8787/api/my-activity \
+  -H "Origin: https://wdqqdw.github.io" \
+  -H "Authorization: Bearer YOUR_SESSION_TOKEN"
+```
+
+Tutor calls automatically create `chat` activity records. The main frontend creates `run` and `submit` records after code execution.
+
 ## Tutor Prompt Files
 
 The tutor prompt is intentionally editable without touching the server code:
