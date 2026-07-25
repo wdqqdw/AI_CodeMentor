@@ -685,7 +685,10 @@ const testcaseGroupDescriptions = {
   "Tier 2 · Easy+ · Backtracking Paths": "Practice path state: 8 directions, bends, starts, and restoring visited cells.",
   "Tier 3 · Medium · Prefix Pruning": "Focus on Trie/prefix pruning and shared dictionary stems.",
   "Tier 4 · Medium+ · Edge Cases": "Check empty inputs, rectangular boards, repeated letters, and uncommon shapes.",
-  "Tier 5 · Hard · Hidden Challenge": "No hints here. These combine several earlier rules and stress correctness.",
+  "Tier 5 · Hard · Mixed Rule Stacks": "Several correctness rules interact in one board; debug one rule at a time.",
+  "Tier 6 · Hard · Corner Cases": "Focus on unusual inputs, duplicates, one-dimensional boards, and literal q/u cells.",
+  "Tier 7 · Very Hard · Performance & Pruning": "These cases reward Trie pruning and punish repeated full-board searches.",
+  "Tier 8 · Final · No Hints": "No hints here. These combine earlier rules and stress correctness.",
 };
 
 const renderGroupedHintTestcases = () => {

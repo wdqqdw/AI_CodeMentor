@@ -1,6 +1,6 @@
 window.CODEMENTOR_PROBLEMS = {
   currentProblemId: "boggle_solver",
-  markdownProblemPath: "./problems/boggle_solver.md?v=boggle-tiers-1",
+  markdownProblemPath: "./problems/boggle_solver.md?v=boggle-100-cases-1",
   problemCatalog: [
   {
     "id": "array_hashing",
@@ -1089,7 +1089,7 @@ window.CODEMENTOR_PROBLEMS = {
         "chineseName": "棋盘单词搜索",
         "tag": "Trie + Backtracking",
         "difficulty": "Hard",
-        "path": "./problems/boggle_solver.md?v=boggle-tiers-1"
+        "path": "./problems/boggle_solver.md?v=boggle-100-cases-1"
       },
       {
         "id": "palindrome_partitioning",
