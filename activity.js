@@ -84,6 +84,7 @@ const showDashboard = () => {
   dashboard.hidden = false;
   refreshButton.hidden = false;
   logoutButton.hidden = false;
+  loginMessage.textContent = "";
 };
 
 const scoreText = (entry) => {
