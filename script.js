@@ -5,6 +5,7 @@ const bookmarkButton = document.querySelector(".bookmark");
 const chatForm = document.querySelector(".chat-composer");
 const chatInput = document.querySelector("#mentor-input");
 const chatThread = document.querySelector(".chat-thread");
+const sendButton = document.querySelector(".send-button");
 const codeEditor = document.querySelector("#code-editor");
 const lineGutter = document.querySelector("#line-gutter");
 const testOutput = document.querySelector("#test-output");
@@ -29,8 +30,22 @@ const catalogView = document.querySelector("#catalog-view");
 const catalogList = document.querySelector("#catalog-list");
 const openCatalogButton = document.querySelector("[data-action='open-catalog']");
 const closeCatalogButton = document.querySelector("[data-action='close-catalog']");
+const authGate = document.querySelector("#auth-gate");
+const authForm = document.querySelector("#auth-form");
+const authTitle = document.querySelector("#auth-title");
+const authUsername = document.querySelector("#auth-username");
+const authPassword = document.querySelector("#auth-password");
+const authSubmit = document.querySelector("#auth-submit");
+const authMessage = document.querySelector("#auth-message");
+const authModeButtons = document.querySelectorAll("[data-auth-mode]");
+const accountStatus = document.querySelector("#account-status");
+const accountName = document.querySelector("#account-name");
+const logoutButton = document.querySelector("#logout-button");
 
 const tutorApiUrl = window.CODEMENTOR_CONFIG?.tutorApiUrl || "http://127.0.0.1:8787/api/tutor";
+const backendBaseUrl =
+  window.CODEMENTOR_CONFIG?.backendBaseUrl || tutorApiUrl.replace(/\/api\/tutor\/?$/, "");
+const authStorageKey = "codementor.auth.v1";
 const problemStore = window.CODEMENTOR_PROBLEMS || {};
 const problemCatalog = problemStore.problemCatalog || [];
 const fallbackProblem =
@@ -53,6 +68,8 @@ let pyodideReadyPromise = null;
 let latestResults = new Map();
 let latestScope = "none";
 let chatBusy = false;
+let authMode = "register";
+let authSession = null;
 let activeProblemPath = problemStore.markdownProblemPath || "";
 let expandedCatalogCategory = "";
 const difficultyRank = { easy: 0, medium: 1, hard: 2 };
@@ -94,6 +111,82 @@ const setBusy = (isBusy) => {
   runButton.disabled = isBusy;
   submitButton.disabled = isBusy;
   languageSelect.disabled = isBusy;
+};
+
+const backendUrl = (path) => `${backendBaseUrl}${path}`;
+
+const loadStoredAuthSession = () => {
+  try {
+    const saved = window.localStorage.getItem(authStorageKey);
+    return saved ? JSON.parse(saved) : null;
+  } catch (error) {
+    return null;
+  }
+};
+
+const saveAuthSession = (session) => {
+  authSession = session;
+  window.localStorage.setItem(authStorageKey, JSON.stringify(session));
+};
+
+const clearAuthSession = () => {
+  authSession = null;
+  window.localStorage.removeItem(authStorageKey);
+};
+
+const authHeaders = () =>
+  authSession?.token
+    ? {
+        Authorization: `Bearer ${authSession.token}`,
+      }
+    : {};
+
+const setChatEnabled = (isEnabled) => {
+  chatInput.disabled = !isEnabled || chatBusy;
+  sendButton.disabled = !isEnabled || chatBusy;
+  chatInput.placeholder = isEnabled ? "Ask me anything about this problem..." : "Create an account to use AI Tutor...";
+};
+
+const setAuthMessage = (text, state = "") => {
+  authMessage.textContent = text;
+  authMessage.className = `auth-message ${state}`.trim();
+};
+
+const setAuthMode = (mode) => {
+  authMode = mode === "login" ? "login" : "register";
+  authTitle.textContent = authMode === "register" ? "Create your account" : "Log in to continue";
+  authSubmit.textContent = authMode === "register" ? "Create account" : "Log in";
+  authPassword.autocomplete = authMode === "register" ? "new-password" : "current-password";
+  authModeButtons.forEach((button) => {
+    const isActive = button.dataset.authMode === authMode;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-selected", String(isActive));
+  });
+  setAuthMessage("");
+};
+
+const showAuthGate = (mode = "register", message = "") => {
+  setAuthMode(mode);
+  setAuthMessage(message, message ? "fail" : "");
+  authGate.hidden = false;
+  setChatEnabled(false);
+  window.setTimeout(() => authUsername.focus(), 0);
+};
+
+const hideAuthGate = () => {
+  authGate.hidden = true;
+  setChatEnabled(true);
+};
+
+const updateAccountStatus = () => {
+  if (!authSession?.user) {
+    accountStatus.hidden = true;
+    accountName.textContent = "Not signed in";
+    return;
+  }
+
+  accountStatus.hidden = false;
+  accountName.textContent = authSession.user.username;
 };
 
 const escapeHtml = (value) =>
@@ -1202,8 +1295,10 @@ const renderBubbleContent = (bubble, text) => {
   content.innerHTML = renderMarkdown(text);
 };
 
-const createMessage = (text, owner) => {
-  const timestamp = Date.now();
+const createMessage = (text, owner, timestampValue = Date.now()) => {
+  const parsedTimestamp =
+    typeof timestampValue === "number" ? timestampValue : new Date(timestampValue).getTime();
+  const timestamp = Number.isFinite(parsedTimestamp) ? parsedTimestamp : Date.now();
   const group = document.createElement("div");
   group.className = `message-group ${owner}`;
   group.dataset.timestamp = String(timestamp);
@@ -1232,6 +1327,84 @@ const createMessage = (text, owner) => {
   return group;
 };
 
+const initialTutorMessage = "你好！我是你的 AI Tutor，可以帮你梳理思路、检查代码，或者解释测试结果。";
+
+const resetChatThread = (entries = []) => {
+  chatThread.innerHTML = "";
+  chatThread.appendChild(createMessage(initialTutorMessage, "tutor"));
+
+  entries.forEach((entry) => {
+    if (entry.learner_request) {
+      chatThread.appendChild(createMessage(entry.learner_request, "user", entry.created_at));
+    }
+    if (entry.message || entry.error) {
+      chatThread.appendChild(createMessage(entry.error || entry.message, "tutor", entry.created_at));
+    }
+  });
+
+  scrollChatToBottom();
+};
+
+const loadAccountHistory = async () => {
+  if (!authSession?.token) {
+    resetChatThread();
+    return;
+  }
+
+  const response = await fetch(backendUrl("/api/my-history?limit=100000"), {
+    headers: authHeaders(),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || "Could not load account history.");
+  }
+
+  resetChatThread(data.entries || []);
+};
+
+const completeAuth = async (session) => {
+  saveAuthSession(session);
+  updateAccountStatus();
+  hideAuthGate();
+  try {
+    await loadAccountHistory();
+  } catch (error) {
+    console.warn(error);
+    resetChatThread();
+  }
+};
+
+const verifyStoredSession = async () => {
+  authSession = loadStoredAuthSession();
+  if (!authSession?.token) {
+    updateAccountStatus();
+    resetChatThread();
+    showAuthGate("register");
+    return;
+  }
+
+  try {
+    const response = await fetch(backendUrl("/api/me"), {
+      headers: authHeaders(),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.error || "Session expired.");
+    }
+
+    authSession.user = data.user;
+    saveAuthSession(authSession);
+    updateAccountStatus();
+    hideAuthGate();
+    await loadAccountHistory();
+  } catch (error) {
+    clearAuthSession();
+    updateAccountStatus();
+    resetChatThread();
+    showAuthGate("login", "Session expired. Please log in again.");
+  }
+};
+
 const setMessageText = (message, text) => {
   const bubble = message.querySelector(".bubble");
   const time = bubble?.querySelector(".message-time");
@@ -1250,6 +1423,10 @@ const scrollChatToBottom = () => {
 };
 
 const askTutor = async (message) => {
+  if (!authSession?.token) {
+    throw new Error("Please create an account or log in first.");
+  }
+
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), 60000);
 
@@ -1258,6 +1435,7 @@ const askTutor = async (message) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...authHeaders(),
       },
       body: JSON.stringify(buildTutorPayload(message)),
       signal: controller.signal,
@@ -1280,6 +1458,11 @@ chatForm.addEventListener("submit", async (event) => {
     return;
   }
 
+  if (!authSession?.token) {
+    showAuthGate("register", "Create an account to save your tutor conversations.");
+    return;
+  }
+
   const text = chatInput.value.trim();
 
   if (!text) {
@@ -1289,7 +1472,7 @@ chatForm.addEventListener("submit", async (event) => {
   chatThread.appendChild(createMessage(text, "user"));
   chatInput.value = "";
   chatBusy = true;
-  chatInput.disabled = true;
+  setChatEnabled(false);
 
   const pendingMessage = createMessage("正在思考...", "tutor");
   chatThread.appendChild(pendingMessage);
@@ -1301,14 +1484,80 @@ chatForm.addEventListener("submit", async (event) => {
   } catch (error) {
     setMessageText(
       pendingMessage,
-      `本地 AI Tutor 服务暂时不可用：${error.message}。请确认后端正在 http://127.0.0.1:8787 运行。`,
+      `AI Tutor 服务暂时不可用：${error.message}。请确认账号已登录，并且后端服务正在运行。`,
     );
   } finally {
     chatBusy = false;
-    chatInput.disabled = false;
+    setChatEnabled(Boolean(authSession?.token));
     chatInput.focus();
     scrollChatToBottom();
   }
+});
+
+authModeButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    setAuthMode(button.dataset.authMode);
+  });
+});
+
+authForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const username = authUsername.value.trim();
+  const password = authPassword.value;
+  if (!username || !password) {
+    setAuthMessage("Please enter both username and password.", "fail");
+    return;
+  }
+
+  authSubmit.disabled = true;
+  authUsername.disabled = true;
+  authPassword.disabled = true;
+  setAuthMessage(authMode === "register" ? "Creating account..." : "Logging in...");
+
+  try {
+    const endpoint = authMode === "register" ? "/api/register" : "/api/login";
+    const response = await fetch(backendUrl(endpoint), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ username, password }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.error || "Account request failed.");
+    }
+
+    authPassword.value = "";
+    setAuthMessage("Signed in.", "ok");
+    await completeAuth(data);
+  } catch (error) {
+    setAuthMessage(error.message, "fail");
+  } finally {
+    authSubmit.disabled = false;
+    authUsername.disabled = false;
+    authPassword.disabled = false;
+  }
+});
+
+logoutButton.addEventListener("click", async () => {
+  const token = authSession?.token;
+  if (token) {
+    try {
+      await fetch(backendUrl("/api/logout"), {
+        method: "POST",
+        headers: authHeaders(),
+      });
+    } catch (error) {
+      console.warn(error);
+    }
+  }
+
+  clearAuthSession();
+  updateAccountStatus();
+  resetChatThread();
+  showAuthGate("login");
+  setAuthMessage("Logged out.", "ok");
 });
 
 codeEditor.addEventListener("input", syncEditor);
@@ -1361,6 +1610,7 @@ const initializeApp = async () => {
   renderTestcases();
   setStatus("Ready");
   syncEditor();
+  await verifyStoredSession();
 };
 
 initializeApp();
