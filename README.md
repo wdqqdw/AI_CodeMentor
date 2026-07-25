@@ -22,12 +22,13 @@ Last updated: 2026-07-26
 - Model configured by the backend: `DeepSeek-V4-Pro`.
 - Backend conversation history window: latest `100000` characters.
 - Account system: enabled. The app opens with registration/login before AI Tutor can be used.
+- Tutor style binding: enabled. Each account is permanently bound to one Tutor style at registration, or at the next login for older unbound accounts.
 - Structured activity logging: enabled for Run, Submit, and AI Tutor chat events.
 - Activity dashboard: account-scoped login page with summary cards, a shared scroll area containing the accuracy-over-interactions line chart and a staggered vertical timeline.
 - Activity dashboard compatibility: legacy Tutor chat history is merged into the structured activity feed.
-- Active tutor prompt: Encouraging Tutor v3. It refuses code/final-answer requests, avoids exact testcase/code leakage, and gives one small conceptual hint or question at a time.
+- Tutor prompts: Encouraging Tutor v3 and Neutral Tutor v3. Both refuse code/final-answer requests and avoid exact testcase/code leakage. Encouraging Tutor uses supportive wording; Neutral Tutor uses plain, non-motivational wording.
 - Boggle Solver testcases: 100 cases grouped into 8 learning tiers, with non-spoiling hints for the first 90 cases and fully hidden challenge cases for the final 10.
-- Private account summary CSV: enabled on the backend. The server maintains `account_summary.csv` inside the private backend data directory with usernames, password hashes, activity counts, best score, latest problem, and timestamps.
+- Private account summary CSV: enabled on the backend. The server maintains `account_summary.csv` inside the private backend data directory with usernames, bound Tutor style, password hashes, activity counts, best score, latest problem, and timestamps.
 
 ## Important Notes
 
@@ -53,8 +54,8 @@ Last updated: 2026-07-26
 
 ## Backend Account API
 
-- `POST /api/register`: create an account and return a session token.
-- `POST /api/login`: log in with username and password.
+- `POST /api/register`: create an account and return a session token. Accepts `tutorMode` as `encouraging` or `neutral`; the choice is permanently bound to the account.
+- `POST /api/login`: log in with username and password. For older unbound accounts, `tutorMode` binds once on login; already-bound accounts keep their original Tutor style.
 - `GET /api/me`: validate the current session.
 - `POST /api/logout`: invalidate the current session.
 - `GET /api/my-history`: read the current account's Tutor conversation history.

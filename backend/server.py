@@ -66,6 +66,21 @@ RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "20"))
 SESSION_TTL_SECONDS = int(os.getenv("SESSION_TTL_SECONDS", str(60 * 60 * 24 * 30)))
 MIN_PASSWORD_LENGTH = int(os.getenv("MIN_PASSWORD_LENGTH", "6"))
 PASSWORD_HASH_ITERATIONS = int(os.getenv("PASSWORD_HASH_ITERATIONS", "260000"))
+DEFAULT_TUTOR_MODE = "encouraging"
+TUTOR_MODES = {
+    "encouraging": "Encouraging Tutor",
+    "neutral": "Neutral Tutor",
+}
+TUTOR_MODE_ALIASES = {
+    "encouraging": "encouraging",
+    "encourage": "encouraging",
+    "positive": "encouraging",
+    "neutral": "neutral",
+    "plain": "neutral",
+    "non_encouraging": "neutral",
+    "not_encouraging": "neutral",
+    "unencouraging": "neutral",
+}
 
 HISTORY_DIR = BACKEND_DIR / "logs"
 HISTORY_PATH = HISTORY_DIR / "tutor_history.jsonl"
@@ -174,6 +189,8 @@ def refresh_account_summary_csv() -> None:
                 {
                     "user_id": user_id,
                     "username": user.get("username", ""),
+                    "tutor_mode": tutor_mode_for_user(user),
+                    "tutor_mode_label": tutor_mode_label(tutor_mode_for_user(user)),
                     "password_storage": "pbkdf2_sha256_hash_only",
                     "password_hash": user.get("password_hash", ""),
                     "created_at": user.get("created_at", ""),
@@ -195,6 +212,8 @@ def refresh_account_summary_csv() -> None:
         fieldnames = [
             "user_id",
             "username",
+            "tutor_mode",
+            "tutor_mode_label",
             "password_storage",
             "password_hash",
             "created_at",
@@ -227,11 +246,36 @@ def normalize_username(username: str) -> str:
     return username.strip().lower()
 
 
+def normalize_tutor_mode(value: Any) -> str:
+    key = str(value or DEFAULT_TUTOR_MODE).strip().lower().replace("-", "_")
+    if key not in TUTOR_MODE_ALIASES:
+        raise ValueError("Tutor style must be encouraging or neutral.")
+    return TUTOR_MODE_ALIASES[key]
+
+
+def tutor_mode_label(mode: Any) -> str:
+    try:
+        return TUTOR_MODES[normalize_tutor_mode(mode)]
+    except ValueError:
+        return TUTOR_MODES[DEFAULT_TUTOR_MODE]
+
+
+def tutor_mode_for_user(user: dict[str, Any]) -> str:
+    try:
+        return normalize_tutor_mode(user.get("tutor_mode"))
+    except ValueError:
+        return DEFAULT_TUTOR_MODE
+
+
 def public_user(user: dict[str, Any]) -> dict[str, Any]:
+    mode = tutor_mode_for_user(user)
     return {
         "id": user.get("id", ""),
         "username": user.get("username", ""),
         "created_at": user.get("created_at", ""),
+        "tutor_mode": mode,
+        "tutor_mode_label": tutor_mode_label(mode),
+        "tutor_mode_locked": bool(user.get("tutor_mode")),
     }
 
 
@@ -273,9 +317,10 @@ def verify_password(password: str, password_hash: str) -> bool:
         return False
 
 
-def create_user(username: str, password: str) -> dict[str, Any]:
+def create_user(username: str, password: str, tutor_mode: Any = DEFAULT_TUTOR_MODE) -> dict[str, Any]:
     clean_username, clean_password = validate_credentials(username, password)
     username_key = normalize_username(clean_username)
+    clean_tutor_mode = normalize_tutor_mode(tutor_mode)
 
     with DATA_LOCK:
         store = read_json_file(USERS_PATH, {"users": {}})
@@ -288,6 +333,8 @@ def create_user(username: str, password: str) -> dict[str, Any]:
             "username": clean_username,
             "username_key": username_key,
             "password_hash": hash_password(clean_password),
+            "tutor_mode": clean_tutor_mode,
+            "tutor_mode_bound_at": now_iso(),
             "created_at": now_iso(),
             "last_login_at": now_iso(),
         }
@@ -297,7 +344,7 @@ def create_user(username: str, password: str) -> dict[str, Any]:
         return user
 
 
-def authenticate_user(username: str, password: str) -> dict[str, Any]:
+def authenticate_user(username: str, password: str, tutor_mode: Any = None) -> dict[str, Any]:
     username_key = normalize_username(username)
     with DATA_LOCK:
         store = read_json_file(USERS_PATH, {"users": {}})
@@ -305,10 +352,32 @@ def authenticate_user(username: str, password: str) -> dict[str, Any]:
         if not user or not verify_password(password, str(user.get("password_hash", ""))):
             raise PermissionError("Invalid username or password.")
 
+        if not user.get("tutor_mode"):
+            user["tutor_mode"] = normalize_tutor_mode(tutor_mode)
+            user["tutor_mode_bound_at"] = now_iso()
         user["last_login_at"] = now_iso()
         write_json_file(USERS_PATH, store)
         refresh_account_summary_csv()
         return user
+
+
+def ensure_user_tutor_mode(user: dict[str, Any], fallback: Any = DEFAULT_TUTOR_MODE) -> dict[str, Any]:
+    if user.get("tutor_mode"):
+        return user
+
+    user_id = str(user.get("id", ""))
+    clean_tutor_mode = normalize_tutor_mode(fallback)
+    with DATA_LOCK:
+        store = read_json_file(USERS_PATH, {"users": {}})
+        for stored_user in store.get("users", {}).values():
+            if stored_user.get("id") == user_id:
+                stored_user["tutor_mode"] = clean_tutor_mode
+                stored_user["tutor_mode_bound_at"] = now_iso()
+                write_json_file(USERS_PATH, store)
+                refresh_account_summary_csv()
+                user.update(stored_user)
+                break
+    return user
 
 
 def create_session(user: dict[str, Any]) -> dict[str, Any]:
@@ -664,6 +733,7 @@ def build_activity_entry(user: dict[str, Any], payload: dict[str, Any], event_ty
         "event_type": clean_event_type,
         "user_id": user.get("id"),
         "username": user.get("username"),
+        "tutor_mode": tutor_mode_for_user(user),
         "problem": sanitize_problem(payload.get("problem")),
         "code": sanitize_code_state(payload.get("code")),
         "test_state": sanitize_test_state(payload.get("testState") or payload.get("test_state")),
@@ -883,7 +953,11 @@ class TutorHandler(BaseHTTPRequestHandler):
 
         payload = self.read_json_body()
         try:
-            user = create_user(str(payload.get("username", "")), str(payload.get("password", "")))
+            user = create_user(
+                str(payload.get("username", "")),
+                str(payload.get("password", "")),
+                payload.get("tutor_mode") or payload.get("tutorMode"),
+            )
             session = create_session(user)
             self.send_json(HTTPStatus.CREATED, {"token": session["token"], "user": public_user(user)})
         except FileExistsError as error:
@@ -897,11 +971,17 @@ class TutorHandler(BaseHTTPRequestHandler):
 
         payload = self.read_json_body()
         try:
-            user = authenticate_user(str(payload.get("username", "")), str(payload.get("password", "")))
+            user = authenticate_user(
+                str(payload.get("username", "")),
+                str(payload.get("password", "")),
+                payload.get("tutor_mode") or payload.get("tutorMode"),
+            )
             session = create_session(user)
             self.send_json(HTTPStatus.OK, {"token": session["token"], "user": public_user(user)})
         except PermissionError as error:
             self.send_json(HTTPStatus.UNAUTHORIZED, {"error": str(error)})
+        except ValueError as error:
+            self.send_json(HTTPStatus.BAD_REQUEST, {"error": str(error)})
 
     def do_GET(self) -> None:
         path = urlparse(self.path).path
@@ -1054,15 +1134,17 @@ class TutorHandler(BaseHTTPRequestHandler):
 
         try:
             payload = self.read_json_body()
-            messages = build_tutor_messages(payload) if path == "/api/tutor" else clean_messages(payload)
+            user = ensure_user_tutor_mode(context["user"]) if context else None
+            tutor_mode = tutor_mode_for_user(user) if user else DEFAULT_TUTOR_MODE
+            messages = build_tutor_messages(payload, tutor_mode=tutor_mode) if path == "/api/tutor" else clean_messages(payload)
             raw_prompt = format_raw_prompt(messages)
             content = stream_chat_text(messages)
-            user = context["user"] if context else None
             entry = {
                 "id": f"{int(time.time() * 1000)}-{threading.get_ident()}",
                 "created_at": now_iso(),
                 "endpoint": path,
                 "model": MODEL,
+                "tutor_mode": tutor_mode if path == "/api/tutor" else "",
                 "template_used": payload.get("messages") is None,
                 "learner_request": learner_request_from_payload(payload, messages),
                 "messages": messages,

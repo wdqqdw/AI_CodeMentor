@@ -9,10 +9,18 @@ from typing import Any
 PROMPT_DIR = Path(__file__).resolve().parent / "prompts"
 SYSTEM_PROMPT_PATH = PROMPT_DIR / "tutor_system.md"
 USER_TEMPLATE_PATH = PROMPT_DIR / "tutor_user_template.md"
+SYSTEM_PROMPT_PATHS = {
+    "encouraging": PROMPT_DIR / "variants" / "encouraging_tutor_v3.md",
+    "neutral": PROMPT_DIR / "variants" / "neutral_tutor_v3.md",
+}
 
 
 def _read_prompt_file(path: Path) -> str:
     return path.read_text(encoding="utf-8").strip()
+
+
+def _system_prompt_path(tutor_mode: str) -> Path:
+    return SYSTEM_PROMPT_PATHS.get(tutor_mode, SYSTEM_PROMPT_PATH)
 
 
 def _text(value: Any, fallback: str = "") -> str:
@@ -82,7 +90,7 @@ def _format_test_state(test_state: Any) -> str:
     )
 
 
-def build_tutor_messages(payload: dict[str, Any]) -> list[dict[str, str]]:
+def build_tutor_messages(payload: dict[str, Any], tutor_mode: str = "encouraging") -> list[dict[str, str]]:
     message = _text(payload.get("message")).strip()
     if not message:
         raise ValueError("Provide 'message'.")
@@ -111,6 +119,6 @@ def build_tutor_messages(payload: dict[str, Any]) -> list[dict[str, str]]:
     )
 
     return [
-        {"role": "system", "content": _read_prompt_file(SYSTEM_PROMPT_PATH)},
+        {"role": "system", "content": _read_prompt_file(_system_prompt_path(tutor_mode))},
         {"role": "user", "content": context},
     ]

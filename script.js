@@ -38,8 +38,11 @@ const authPassword = document.querySelector("#auth-password");
 const authSubmit = document.querySelector("#auth-submit");
 const authMessage = document.querySelector("#auth-message");
 const authModeButtons = document.querySelectorAll("[data-auth-mode]");
+const authTutorModeInputs = document.querySelectorAll("input[name='tutorMode']");
+const tutorStyleNote = document.querySelector("#tutor-style-note");
 const accountStatus = document.querySelector("#account-status");
 const accountName = document.querySelector("#account-name");
+const accountTutorMode = document.querySelector("#account-tutor-mode");
 const logoutButton = document.querySelector("#logout-button");
 
 const tutorApiUrl = window.CODEMENTOR_CONFIG?.tutorApiUrl || "http://127.0.0.1:8787/api/tutor";
@@ -158,6 +161,10 @@ const setAuthMode = (mode) => {
   authTitle.textContent = authMode === "register" ? "Create your account" : "Log in to continue";
   authSubmit.textContent = authMode === "register" ? "Create account" : "Log in";
   authPassword.autocomplete = authMode === "register" ? "new-password" : "current-password";
+  tutorStyleNote.textContent =
+    authMode === "register"
+      ? "This choice is permanently bound to the account."
+      : "Existing accounts keep their original tutor style. This binds only unbound legacy accounts.";
   authModeButtons.forEach((button) => {
     const isActive = button.dataset.authMode === authMode;
     button.classList.toggle("active", isActive);
@@ -183,11 +190,13 @@ const updateAccountStatus = () => {
   if (!authSession?.user) {
     accountStatus.hidden = true;
     accountName.textContent = "Not signed in";
+    accountTutorMode.textContent = "Tutor";
     return;
   }
 
   accountStatus.hidden = false;
   accountName.textContent = authSession.user.username;
+  accountTutorMode.textContent = authSession.user.tutor_mode_label || "Tutor";
 };
 
 const escapeHtml = (value) =>
@@ -1572,6 +1581,7 @@ authForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const username = authUsername.value.trim();
   const password = authPassword.value;
+  const tutorMode = authForm.elements.tutorMode?.value || "encouraging";
   if (!username || !password) {
     setAuthMessage("Please enter both username and password.", "fail");
     return;
@@ -1580,6 +1590,9 @@ authForm.addEventListener("submit", async (event) => {
   authSubmit.disabled = true;
   authUsername.disabled = true;
   authPassword.disabled = true;
+  authTutorModeInputs.forEach((input) => {
+    input.disabled = true;
+  });
   setAuthMessage(authMode === "register" ? "Creating account..." : "Logging in...");
 
   try {
@@ -1589,7 +1602,7 @@ authForm.addEventListener("submit", async (event) => {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ username, password, tutorMode }),
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
@@ -1605,6 +1618,9 @@ authForm.addEventListener("submit", async (event) => {
     authSubmit.disabled = false;
     authUsername.disabled = false;
     authPassword.disabled = false;
+    authTutorModeInputs.forEach((input) => {
+      input.disabled = false;
+    });
   }
 });
 

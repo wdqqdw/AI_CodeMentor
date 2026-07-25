@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CodeMentor AI</title>
-    <link rel="stylesheet" href="./styles.css?v=structured-activity-1" />
+    <link rel="stylesheet" href="./styles.css?v=tutor-modes-1" />
   </head>
   <body>
     <div class="app-shell">
@@ -23,6 +23,7 @@
         <div class="account-status" id="account-status" hidden>
           <a class="activity-link" href="./activity.html">Activity</a>
           <span id="account-name">Not signed in</span>
+          <span class="account-mode" id="account-tutor-mode">Tutor</span>
           <button type="button" id="logout-button">Log out</button>
         </div>
       </header>
@@ -238,6 +239,24 @@ class Solution:
           <input id="auth-username" name="username" autocomplete="username" placeholder="3-32 letters, numbers, _ . -" required />
           <label for="auth-password">Password</label>
           <input id="auth-password" name="password" type="password" autocomplete="new-password" placeholder="At least 6 characters" required />
+          <fieldset class="tutor-style-selector" id="tutor-style-selector">
+            <legend>Tutor style</legend>
+            <label class="tutor-style-option">
+              <input type="radio" name="tutorMode" value="encouraging" checked />
+              <span>
+                <strong>鼓励型 Tutor</strong>
+                <small>更温和，会多用支持性的语气引导你回答。</small>
+              </span>
+            </label>
+            <label class="tutor-style-option">
+              <input type="radio" name="tutorMode" value="neutral" />
+              <span>
+                <strong>中性 Tutor</strong>
+                <small>更平淡，只给客观提示，不主动鼓励。</small>
+              </span>
+            </label>
+            <p id="tutor-style-note">This choice is permanently bound to the account.</p>
+          </fieldset>
           <button id="auth-submit" type="submit">Create account</button>
           <p class="auth-message" id="auth-message" role="status" aria-live="polite"></p>
         </form>
@@ -252,6 +271,6 @@ class Solution:
         activityApiUrl: "https://frequent-reflection-combinations-raises.trycloudflare.com/api/activity",
       };
     </script>
-    <script src="./script.js?v=structured-activity-3"></script>
+    <script src="./script.js?v=tutor-modes-1"></script>
   </body>
 </html>
