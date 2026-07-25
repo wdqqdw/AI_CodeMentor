@@ -136,6 +136,12 @@ svg {
   background: rgba(255, 255, 255, 0.16);
 }
 
+.login-panel[hidden],
+.activity-dashboard[hidden],
+.header-actions button[hidden] {
+  display: none;
+}
+
 .login-panel {
   width: min(900px, calc(100% - 40px));
   align-self: center;
