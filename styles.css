@@ -66,9 +66,9 @@ svg {
   min-width: 0;
   height: 54px;
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 0;
+  gap: 16px;
   padding: 8px 30px;
   color: #ffffff;
   background:
@@ -121,6 +121,41 @@ svg {
 .brand-name strong {
   color: #9c69ff;
   font-weight: 900;
+}
+
+.account-status {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  justify-self: end;
+  color: rgba(255, 255, 255, 0.88);
+  font-weight: 720;
+}
+
+.account-status[hidden] {
+  display: none;
+}
+
+.account-status span {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-status button {
+  height: 32px;
+  padding: 0 12px;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.account-status button:hover {
+  background: rgba(255, 255, 255, 0.16);
 }
 
 .main-nav {
@@ -1566,6 +1601,136 @@ svg {
   color: #9892aa;
   font-size: 0.7rem;
   text-align: center;
+}
+
+.auth-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background:
+    linear-gradient(180deg, rgba(18, 7, 48, 0.66), rgba(18, 7, 48, 0.5)),
+    rgba(248, 246, 253, 0.78);
+  backdrop-filter: blur(10px);
+}
+
+.auth-gate[hidden] {
+  display: none;
+}
+
+.auth-panel {
+  width: min(420px, 100%);
+  padding: 22px;
+  color: var(--ink);
+  background: #ffffff;
+  border: 1px solid rgba(229, 223, 239, 0.95);
+  border-radius: 10px;
+  box-shadow: 0 24px 70px rgba(24, 12, 57, 0.28);
+}
+
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.auth-brand .brand-mark {
+  width: 38px;
+  height: 38px;
+}
+
+.auth-brand span:not(.brand-mark) {
+  color: var(--purple);
+  font-weight: 800;
+}
+
+.auth-brand h2 {
+  margin: 2px 0 0;
+  font-size: 1.45rem;
+  line-height: 1.1;
+}
+
+.auth-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 18px;
+  padding: 4px;
+  background: #f5f1ff;
+  border: 1px solid #e8defd;
+  border-radius: var(--radius);
+}
+
+.auth-switch button {
+  height: 36px;
+  color: #6f688a;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.auth-switch button.active {
+  color: #ffffff;
+  background: linear-gradient(135deg, #7a32f5, #6125dc);
+  box-shadow: 0 8px 20px rgba(109, 44, 240, 0.18);
+}
+
+.auth-form {
+  display: grid;
+  gap: 9px;
+}
+
+.auth-form label {
+  color: #4d4568;
+  font-weight: 760;
+}
+
+.auth-form input {
+  height: 42px;
+  padding: 0 12px;
+  color: #211b39;
+  background: #ffffff;
+  border: 1px solid #dcd6e9;
+  border-radius: var(--radius);
+  outline: 0;
+}
+
+.auth-form input:focus {
+  border-color: rgba(109, 44, 240, 0.6);
+  box-shadow: 0 0 0 3px rgba(109, 44, 240, 0.12);
+}
+
+.auth-form button[type="submit"] {
+  height: 42px;
+  margin-top: 4px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #7a32f5, #6125dc);
+  border-radius: var(--radius);
+  box-shadow: 0 9px 22px rgba(109, 44, 240, 0.2);
+  cursor: pointer;
+}
+
+.auth-form button[type="submit"]:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.auth-message {
+  min-height: 18px;
+  margin: 2px 0 0;
+  color: #817996;
+  font-size: 0.78rem;
+}
+
+.auth-message.fail {
+  color: var(--red);
+}
+
+.auth-message.ok {
+  color: var(--green);
 }
 
 .visually-hidden {
