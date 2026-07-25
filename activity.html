@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CodeMentor AI Activity</title>
-    <link rel="stylesheet" href="./activity.css?v=structured-activity-2" />
+    <link rel="stylesheet" href="./activity.css?v=timeline-analytics-1" />
   </head>
   <body>
     <main class="activity-app">
@@ -44,10 +44,29 @@
 
       <section class="activity-dashboard" id="activity-dashboard" hidden>
         <div class="summary-grid" id="summary-grid" aria-label="Activity summary"></div>
-        <section class="activity-timeline" id="activity-timeline" aria-live="polite">
-          <div class="empty-state">
-            <strong>No structured records yet.</strong>
-            <span>Run code, submit, or chat with AI Tutor from the main page.</span>
+        <section class="analytics-panel">
+          <div class="panel-heading">
+            <div>
+              <span>Learning Curve</span>
+              <h2>Accuracy over interactions</h2>
+            </div>
+            <p>Horizontal axis is interaction order; vertical axis is testcase accuracy.</p>
+          </div>
+          <div class="accuracy-chart" id="accuracy-chart" aria-label="Accuracy trend"></div>
+        </section>
+        <section class="analytics-panel timeline-panel">
+          <div class="panel-heading">
+            <div>
+              <span>Activity Timeline</span>
+              <h2>Chats and submissions</h2>
+            </div>
+            <p>AI Tutor conversations appear on the left; Run and Submit events appear on the right.</p>
+          </div>
+          <div class="activity-timeline" id="activity-timeline" aria-live="polite">
+            <div class="empty-state">
+              <strong>No structured records yet.</strong>
+              <span>Run code, submit, or chat with AI Tutor from the main page.</span>
+            </div>
           </div>
         </section>
       </section>
@@ -58,6 +77,6 @@
         backendBaseUrl: "https://frequent-reflection-combinations-raises.trycloudflare.com",
       };
     </script>
-    <script src="./activity.js?v=structured-activity-2"></script>
+    <script src="./activity.js?v=timeline-analytics-1"></script>
   </body>
 </html>

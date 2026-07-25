@@ -10,6 +10,7 @@ const passwordInput = document.querySelector("#activity-password");
 const loginMessage = document.querySelector("#login-message");
 const dashboard = document.querySelector("#activity-dashboard");
 const summaryGrid = document.querySelector("#summary-grid");
+const accuracyChart = document.querySelector("#accuracy-chart");
 const timeline = document.querySelector("#activity-timeline");
 const refreshButton = document.querySelector("#refresh-button");
 const logoutButton = document.querySelector("#logout-button");
@@ -22,7 +23,9 @@ const escapeHtml = (value) =>
   String(value ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 
 const formatTime = (value) => {
   if (!value) {
@@ -87,12 +90,40 @@ const showDashboard = () => {
   loginMessage.textContent = "";
 };
 
-const scoreText = (entry) => {
+const coerceNumber = (value) => {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
+};
+
+const scoreParts = (entry) => {
   const state = entry.test_state || {};
   const result = entry.result || {};
-  const passed = Number(result.passed || state.passed || 0);
-  const total = Number(result.total || state.total || 0);
-  return total ? `${passed}/${total}` : "-";
+  const total = coerceNumber(result.total) || coerceNumber(state.total);
+  const passed = total ? Math.min(total, coerceNumber(result.passed) || coerceNumber(state.passed)) : 0;
+  const percent = total ? Math.round((passed / total) * 100) : null;
+  return { passed, total, percent };
+};
+
+const scoreText = (entry) => {
+  const score = scoreParts(entry);
+  return score.total ? `${score.passed}/${score.total}` : "-";
+};
+
+const scorePercentText = (entry) => {
+  const score = scoreParts(entry);
+  return score.total ? `${score.percent}%` : "-";
+};
+
+const isChatEvent = (entry) => ["chat", "chat_error"].includes(entry.event_type);
+
+const isCodeEvent = (entry) => ["run", "submit", "activity"].includes(entry.event_type);
+
+const truncateText = (value, limit = 520) => {
+  const text = String(value ?? "").trim();
+  if (text.length <= limit) {
+    return text;
+  }
+  return `${text.slice(0, limit).trim()}...`;
 };
 
 const eventLabel = (type) => {
@@ -117,14 +148,12 @@ const renderSummary = (entries) => {
     (acc, entry) => {
       acc.total += 1;
       acc[entry.event_type] = (acc[entry.event_type] || 0) + 1;
-      const state = entry.test_state || {};
-      const total = Number(state.total || 0);
-      if (total) {
-        const passed = Number(state.passed || 0);
-        const ratio = passed / total;
+      const score = scoreParts(entry);
+      if (score.total) {
+        const ratio = score.passed / score.total;
         if (ratio > acc.bestRatio) {
           acc.bestRatio = ratio;
-          acc.bestScore = `${passed}/${total}`;
+          acc.bestScore = `${score.passed}/${score.total}`;
         }
       }
       return acc;
@@ -173,18 +202,32 @@ const renderCases = (entry) => {
   `;
 };
 
-const renderChat = (entry) => {
+const renderChatBody = (entry) => {
   const chat = entry.chat || {};
   if (!chat.learner_message && !chat.tutor_reply && !chat.error) {
     return "";
   }
 
   return `
-    <section class="chat-block">
-      <h3>Conversation Snapshot</h3>
-      ${chat.learner_message ? `<p><strong>User:</strong> ${escapeHtml(chat.learner_message)}</p>` : ""}
-      ${chat.tutor_reply ? `<p><strong>Tutor:</strong> ${escapeHtml(chat.tutor_reply)}</p>` : ""}
-      ${chat.error ? `<p><strong>Error:</strong> ${escapeHtml(chat.error)}</p>` : ""}
+    <section class="timeline-chat">
+      ${chat.learner_message ? `
+        <div class="snapshot-row user">
+          <span>User</span>
+          <p>${escapeHtml(truncateText(chat.learner_message, 600))}</p>
+        </div>
+      ` : ""}
+      ${chat.tutor_reply ? `
+        <div class="snapshot-row tutor">
+          <span>Tutor</span>
+          <p>${escapeHtml(truncateText(chat.tutor_reply, 900))}</p>
+        </div>
+      ` : ""}
+      ${chat.error ? `
+        <div class="snapshot-row error">
+          <span>Error</span>
+          <p>${escapeHtml(truncateText(chat.error, 420))}</p>
+        </div>
+      ` : ""}
     </section>
   `;
 };
@@ -205,40 +248,130 @@ const renderCode = (entry) => {
   `;
 };
 
-const renderEntry = (entry) => {
+const renderCodeBody = (entry) => {
   const state = entry.test_state || {};
   const hidden = state.hidden || {};
-  const type = entry.event_type || "activity";
+  const result = entry.result || {};
+  const output = result.error || entry.code?.output || entry.code?.status || "";
 
   return `
-    <article class="activity-entry">
-      <div class="entry-top">
-        <div class="entry-title">
-          <strong>${escapeHtml(problemLabel(entry))}</strong>
-          <span>${escapeHtml(formatTime(entry.created_at))}</span>
-        </div>
-        <div class="entry-badges">
-          <span class="badge ${escapeHtml(type)}">${escapeHtml(eventLabel(type))}</span>
-          <span class="badge">${escapeHtml(entry.code?.language || "unknown")}</span>
-          <span class="badge">${escapeHtml(scoreText(entry))}</span>
-        </div>
+    <section class="timeline-code">
+      <div class="score-strip">
+        <strong>${escapeHtml(scoreText(entry))}</strong>
+        <span>${escapeHtml(scorePercentText(entry))} accuracy</span>
       </div>
       <div class="score-line">
         <span>Scope: ${escapeHtml(state.scope || entry.result?.scope || "-")}</span>
         <span>Visible cases: ${(state.visible || []).length}</span>
         <span>Hidden: ${escapeHtml(hidden.passed ?? 0)}/${escapeHtml(hidden.total ?? 0)} passed</span>
       </div>
+      ${output ? `<p class="code-output">${escapeHtml(truncateText(output, 420))}</p>` : ""}
       ${renderCases(entry)}
-      ${renderChat(entry)}
       ${renderCode(entry)}
+    </section>
+  `;
+};
+
+const renderAccuracyChart = (entries) => {
+  const chartEntries = entries
+    .map((entry, index) => ({ entry, index, score: scoreParts(entry) }))
+    .filter((item) => isCodeEvent(item.entry) && item.score.total);
+
+  if (!chartEntries.length) {
+    accuracyChart.innerHTML = `
+      <div class="chart-empty">
+        <strong>No scored code events yet.</strong>
+        <span>Run or submit code to start drawing the accuracy curve.</span>
+      </div>
+    `;
+    return;
+  }
+
+  const width = 860;
+  const height = 260;
+  const left = 50;
+  const right = 24;
+  const top = 24;
+  const bottom = 44;
+  const plotWidth = width - left - right;
+  const plotHeight = height - top - bottom;
+  const maxIndex = Math.max(entries.length - 1, 1);
+  const xFor = (index) => left + (index / maxIndex) * plotWidth;
+  const yFor = (percent) => top + (1 - percent / 100) * plotHeight;
+  const pathPoints = chartEntries.map((item) => `${xFor(item.index).toFixed(1)},${yFor(item.score.percent).toFixed(1)}`).join(" ");
+  const yTicks = [0, 25, 50, 75, 100];
+  const latest = chartEntries[chartEntries.length - 1];
+
+  accuracyChart.innerHTML = `
+    <svg class="chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Accuracy trend chart">
+      ${yTicks
+        .map((tick) => {
+          const y = yFor(tick).toFixed(1);
+          return `
+            <line class="chart-grid" x1="${left}" y1="${y}" x2="${width - right}" y2="${y}"></line>
+            <text class="chart-y-label" x="${left - 12}" y="${Number(y) + 4}" text-anchor="end">${tick}%</text>
+          `;
+        })
+        .join("")}
+      <line class="chart-axis" x1="${left}" y1="${height - bottom}" x2="${width - right}" y2="${height - bottom}"></line>
+      <line class="chart-axis" x1="${left}" y1="${top}" x2="${left}" y2="${height - bottom}"></line>
+      <polyline class="chart-line" points="${pathPoints}"></polyline>
+      ${chartEntries
+        .map((item) => {
+          const x = xFor(item.index).toFixed(1);
+          const y = yFor(item.score.percent).toFixed(1);
+          const label = `${eventLabel(item.entry.event_type)} #${item.index + 1}: ${item.score.passed}/${item.score.total}`;
+          return `
+            <g>
+              <circle class="chart-point ${escapeHtml(item.entry.event_type || "activity")}" cx="${x}" cy="${y}" r="6"></circle>
+              <title>${escapeHtml(label)}</title>
+            </g>
+          `;
+        })
+        .join("")}
+      <text class="chart-x-label" x="${width / 2}" y="${height - 10}" text-anchor="middle">Interaction order</text>
+      <text class="chart-latest" x="${width - right}" y="${top + 8}" text-anchor="end">Latest ${latest.score.percent}%</text>
+    </svg>
+  `;
+};
+
+const renderTimelineEntry = (entry, index) => {
+  const type = entry.event_type || "activity";
+  const side = isChatEvent(entry) ? "left" : "right";
+
+  return `
+    <article class="timeline-item ${side} ${escapeHtml(type)}">
+      <div class="timeline-dot" aria-hidden="true"></div>
+      <div class="timeline-card">
+        <div class="entry-top">
+          <div class="entry-title">
+            <span class="timeline-kicker">#${index + 1} · ${escapeHtml(eventLabel(type))}</span>
+            <strong>${escapeHtml(problemLabel(entry))}</strong>
+            <time>${escapeHtml(formatTime(entry.client_created_at || entry.created_at))}</time>
+          </div>
+          <div class="entry-badges">
+            <span class="badge ${escapeHtml(type)}">${escapeHtml(eventLabel(type))}</span>
+            ${isCodeEvent(entry) ? `<span class="badge">${escapeHtml(entry.code?.language || "unknown")}</span>` : ""}
+            ${isCodeEvent(entry) ? `<span class="badge">${escapeHtml(scoreText(entry))}</span>` : ""}
+          </div>
+        </div>
+        ${isChatEvent(entry) ? renderChatBody(entry) : renderCodeBody(entry)}
+      </div>
     </article>
   `;
 };
 
 const renderEntries = (entries) => {
-  renderSummary(entries);
+  const orderedEntries = [...entries].sort((a, b) => {
+    const left = Date.parse(a.client_created_at || a.created_at || 0);
+    const right = Date.parse(b.client_created_at || b.created_at || 0);
+    return left - right;
+  });
 
-  if (!entries.length) {
+  renderSummary(orderedEntries);
+  renderAccuracyChart(orderedEntries);
+
+  if (!orderedEntries.length) {
     timeline.innerHTML = `
       <div class="empty-state">
         <strong>No structured records yet.</strong>
@@ -248,7 +381,7 @@ const renderEntries = (entries) => {
     return;
   }
 
-  timeline.innerHTML = entries.map(renderEntry).join("");
+  timeline.innerHTML = orderedEntries.map(renderTimelineEntry).join("");
   timeline.scrollTop = timeline.scrollHeight;
 };
 
