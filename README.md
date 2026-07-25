@@ -23,6 +23,7 @@ Last updated: 2026-07-25
 - Backend conversation history window: latest `100000` characters.
 - Account system: enabled. The app opens with registration/login before AI Tutor can be used.
 - Structured activity logging: enabled for Run, Submit, and AI Tutor chat events.
+- Activity dashboard compatibility: legacy Tutor chat history is merged into the structured activity feed.
 
 ## Important Notes
 
