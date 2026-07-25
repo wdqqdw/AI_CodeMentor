@@ -20,11 +20,13 @@ Last updated: 2026-07-25
 - Public backend access: Cloudflare Tunnel.
 - Model configured by the backend: `DeepSeek-V4-Pro`.
 - Backend conversation history window: latest `100000` characters.
+- Account system: enabled. The app opens with registration/login before AI Tutor can be used.
 
 ## Important Notes
 
 - The current Cloudflare Tunnel URL is a temporary `trycloudflare.com` URL. If the tunnel restarts and the URL changes, update both `index.html` and this README.
-- API keys, admin tokens, `.env.local`, backend logs, and private chat history must stay outside this public repository.
+- API keys, admin tokens, `.env.local`, backend logs, private account files, password hashes, sessions, and private chat history must stay outside this public repository.
+- Usernames, password hashes, login sessions, and per-account Tutor history are stored on the AutoDL server under the private backend data directory.
 - The backend debug page is for testing and inspection. Protected backend endpoints may require private credentials that should not be committed here.
 - If the AutoDL instance is stopped, restarted, out of balance, or reclaimed by the platform, the AI Tutor backend will be unavailable until the backend service and tunnel are launched again.
 
@@ -38,6 +40,15 @@ Last updated: 2026-07-25
 - `backend/`: backend reference code and prompt templates that are safe to keep in the public repo.
 - `backend-chat.html`, `backend-chat.css`, `backend-chat.js`: backend debug page.
 
+## Backend Account API
+
+- `POST /api/register`: create an account and return a session token.
+- `POST /api/login`: log in with username and password.
+- `GET /api/me`: validate the current session.
+- `POST /api/logout`: invalidate the current session.
+- `GET /api/my-history`: read the current account's Tutor conversation history.
+- `POST /api/tutor`: call the AI Tutor. This endpoint requires `Authorization: Bearer <session-token>`.
+
 ## Maintenance Checklist
 
 When making future changes, update this README in the same GitHub sync if any of these change:
@@ -47,4 +58,5 @@ When making future changes, update this README in the same GitHub sync if any of
 - Current focused exercise.
 - Backend model, port, or deployment location.
 - Debug/testing page path.
+- Account/authentication behavior.
 - Any user-facing operational instruction.
