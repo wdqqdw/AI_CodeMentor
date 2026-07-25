@@ -84,6 +84,8 @@ curl http://127.0.0.1:8787/api/my-activity \
 
 Tutor calls automatically create `chat` activity records. The main frontend creates `run` and `submit` records after code execution.
 
+`/api/my-activity` also merges older per-account Tutor chat history into the activity feed, so conversations created before structured logging was added still appear on the dashboard.
+
 ## Tutor Prompt Files
 
 The tutor prompt is intentionally editable without touching the server code:
