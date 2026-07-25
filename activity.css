@@ -229,7 +229,7 @@ svg {
 .activity-dashboard {
   min-height: 0;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 14px;
   padding: 18px 22px 22px;
   overflow: hidden;
@@ -261,6 +261,29 @@ svg {
   margin-top: 5px;
   color: var(--ink);
   font-size: 1.32rem;
+}
+
+.activity-scroll {
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  overflow-y: auto;
+  padding-right: 8px;
+  scrollbar-gutter: stable;
+}
+
+.activity-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.activity-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.activity-scroll::-webkit-scrollbar-thumb {
+  background: #d8cef1;
+  border-radius: 999px;
 }
 
 .analytics-panel {
@@ -379,21 +402,17 @@ svg {
 }
 
 .timeline-panel {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .activity-timeline {
   min-height: 0;
   position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 36px minmax(0, 1fr);
-  align-content: start;
-  gap: 14px 0;
-  overflow-y: auto;
-  padding: 4px 12px 18px;
-  scrollbar-gutter: stable;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  overflow: visible;
+  padding: 8px 14px 22px;
 }
 
 .activity-timeline::before {
@@ -408,21 +427,7 @@ svg {
   border-radius: 999px;
 }
 
-.activity-timeline::-webkit-scrollbar {
-  width: 8px;
-}
-
-.activity-timeline::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.activity-timeline::-webkit-scrollbar-thumb {
-  background: #d8cef1;
-  border-radius: 999px;
-}
-
 .empty-state {
-  grid-column: 1 / -1;
   display: grid;
   gap: 6px;
   margin: auto;
@@ -438,16 +443,25 @@ svg {
   position: relative;
   min-width: 0;
   display: grid;
+  width: calc(50% - 18px);
 }
 
 .timeline-item.left {
-  grid-column: 1 / 2;
+  align-self: flex-start;
   padding-right: 18px;
 }
 
 .timeline-item.right {
-  grid-column: 3 / 4;
+  align-self: flex-end;
   padding-left: 18px;
+}
+
+.timeline-item:nth-child(2n) {
+  margin-top: 8px;
+}
+
+.timeline-item:nth-child(3n) {
+  margin-top: 14px;
 }
 
 .timeline-dot {
@@ -776,6 +790,11 @@ svg {
     overflow: visible;
   }
 
+  .activity-scroll {
+    overflow: visible;
+    padding-right: 0;
+  }
+
   .login-panel {
     grid-template-columns: 1fr;
   }
@@ -795,7 +814,7 @@ svg {
   }
 
   .activity-timeline {
-    grid-template-columns: 24px minmax(0, 1fr);
+    display: flex;
     padding-left: 0;
   }
 
@@ -805,7 +824,8 @@ svg {
 
   .timeline-item.left,
   .timeline-item.right {
-    grid-column: 2 / 3;
+    width: 100%;
+    align-self: stretch;
     padding: 0 0 0 10px;
   }
 

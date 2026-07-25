@@ -23,7 +23,7 @@ Last updated: 2026-07-26
 - Backend conversation history window: latest `100000` characters.
 - Account system: enabled. The app opens with registration/login before AI Tutor can be used.
 - Structured activity logging: enabled for Run, Submit, and AI Tutor chat events.
-- Activity dashboard: account-scoped login page with summary cards, a vertical timeline, and an accuracy-over-interactions line chart.
+- Activity dashboard: account-scoped login page with summary cards, a shared scroll area containing the accuracy-over-interactions line chart and a staggered vertical timeline.
 - Activity dashboard compatibility: legacy Tutor chat history is merged into the structured activity feed.
 - Boggle Solver testcases: 100 cases grouped into 8 learning tiers, with non-spoiling hints for the first 90 cases and fully hidden challenge cases for the final 10.
 - Private account summary CSV: enabled on the backend. The server maintains `account_summary.csv` inside the private backend data directory with usernames, password hashes, activity counts, best score, latest problem, and timestamps.
