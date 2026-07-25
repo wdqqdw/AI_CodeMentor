@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CodeMentor AI</title>
-    <link rel="stylesheet" href="./styles.css?v=auth-accounts-1" />
+    <link rel="stylesheet" href="./styles.css?v=structured-activity-1" />
   </head>
   <body>
     <div class="app-shell">
@@ -21,6 +21,7 @@
         </div>
 
         <div class="account-status" id="account-status" hidden>
+          <a class="activity-link" href="./activity.html">Activity</a>
           <span id="account-name">Not signed in</span>
           <button type="button" id="logout-button">Log out</button>
         </div>
@@ -248,8 +249,9 @@ class Solution:
       window.CODEMENTOR_CONFIG = {
         backendBaseUrl: "https://frequent-reflection-combinations-raises.trycloudflare.com",
         tutorApiUrl: "https://frequent-reflection-combinations-raises.trycloudflare.com/api/tutor",
+        activityApiUrl: "https://frequent-reflection-combinations-raises.trycloudflare.com/api/activity",
       };
     </script>
-    <script src="./script.js?v=auth-accounts-1"></script>
+    <script src="./script.js?v=structured-activity-1"></script>
   </body>
 </html>
