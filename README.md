@@ -25,6 +25,7 @@ Last updated: 2026-07-26
 - Structured activity logging: enabled for Run, Submit, and AI Tutor chat events.
 - Activity dashboard: account-scoped login page with summary cards, a shared scroll area containing the accuracy-over-interactions line chart and a staggered vertical timeline.
 - Activity dashboard compatibility: legacy Tutor chat history is merged into the structured activity feed.
+- Active tutor prompt: Encouraging Tutor v3. It refuses code/final-answer requests, avoids exact testcase/code leakage, and gives one small conceptual hint or question at a time.
 - Boggle Solver testcases: 100 cases grouped into 8 learning tiers, with non-spoiling hints for the first 90 cases and fully hidden challenge cases for the final 10.
 - Private account summary CSV: enabled on the backend. The server maintains `account_summary.csv` inside the private backend data directory with usernames, password hashes, activity counts, best score, latest problem, and timestamps.
 
@@ -46,6 +47,7 @@ Last updated: 2026-07-26
 - `problems.js`: generated/static problem catalog used by the page.
 - `problems/*.md`: editable problem definitions.
 - `backend/`: backend reference code and prompt templates that are safe to keep in the public repo.
+- `backend/prompts/baselines`, `backend/prompts/variants`, `backend/prompts/evaluations`: prompt versioning, baseline backups, and synthetic evaluation notes.
 - `backend-chat.html`, `backend-chat.css`, `backend-chat.js`: backend debug page.
 - `activity.html`, `activity.css`, `activity.js`: account-scoped structured activity dashboard.
 
