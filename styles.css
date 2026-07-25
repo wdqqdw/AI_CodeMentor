@@ -682,7 +682,7 @@ svg {
 }
 
 .difficulty {
-  display: inline-flex;
+  display: none;
   align-items: center;
   gap: 7px;
   color: var(--green);
@@ -872,11 +872,11 @@ svg {
 .visual-example-copy dd {
   min-width: 0;
   margin: 0;
-  overflow: hidden;
+  overflow: visible;
   color: #2f294b;
   font: 650 0.68rem/1.35 "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 .editor-panel {
