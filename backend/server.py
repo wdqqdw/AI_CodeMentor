@@ -443,7 +443,37 @@ def read_user_history(user_id: str, limit: int = HISTORY_CHAR_LIMIT) -> list[dic
 
 def read_user_activity(user_id: str, limit: int = HISTORY_CHAR_LIMIT) -> list[dict[str, Any]]:
     with DATA_LOCK:
-        return read_jsonl_entries(user_activity_path(user_id), limit)
+        activity_entries = read_jsonl_entries(user_activity_path(user_id), limit)
+        legacy_history_entries = read_jsonl_history(user_history_path(user_id), limit)
+
+    existing_chat_keys = {
+        chat_activity_key(entry)
+        for entry in activity_entries
+        if entry.get("event_type") in {"chat", "chat_error"} and chat_activity_key(entry)
+    }
+    merged_entries = list(activity_entries)
+
+    for history_entry in legacy_history_entries:
+        legacy_activity = legacy_history_entry_to_activity(history_entry)
+        key = chat_activity_key(legacy_activity)
+        if key and key in existing_chat_keys:
+            continue
+        merged_entries.append(legacy_activity)
+        if key:
+            existing_chat_keys.add(key)
+
+    merged_entries.sort(key=lambda entry: str(entry.get("created_at", "")))
+    total = 0
+    limited: list[dict[str, Any]] = []
+    for entry in reversed(merged_entries):
+        size = activity_entry_size(entry)
+        if limited and total + size > limit:
+            break
+        limited.append(entry)
+        total += size
+
+    limited.reverse()
+    return limited
 
 
 def trim_text(value: Any, limit: int = 20000) -> str:
@@ -555,6 +585,64 @@ def build_activity_entry(user: dict[str, Any], payload: dict[str, Any], event_ty
         },
     }
     return entry
+
+
+def legacy_history_entry_to_activity(entry: dict[str, Any]) -> dict[str, Any]:
+    event_type = "chat_error" if entry.get("error") else "chat"
+    return {
+        "id": f"legacy-{entry.get('id', token_urlsafe(8))}",
+        "created_at": entry.get("created_at", now_iso()),
+        "client_created_at": "",
+        "event_type": event_type,
+        "legacy": True,
+        "user_id": entry.get("user_id"),
+        "username": entry.get("username"),
+        "problem": {
+            "id": "legacy-tutor-chat",
+            "englishName": "Legacy Tutor Chat",
+            "chineseName": "历史 AI Tutor 对话",
+        },
+        "code": {
+            "language": "",
+            "source": "",
+            "status": "",
+            "output": "",
+        },
+        "test_state": {
+            "scope": "legacy",
+            "passed": 0,
+            "total": 0,
+            "visible": [],
+            "hidden": {
+                "total": 0,
+                "passed": 0,
+                "failed": 0,
+            },
+        },
+        "result": {
+            "passed": 0,
+            "total": 0,
+            "all_passed": False,
+            "label": "Legacy chat",
+            "scope": "legacy",
+            "error": trim_text(entry.get("error"), 2000),
+        },
+        "chat": {
+            "learner_message": trim_text(entry.get("learner_request"), 6000),
+            "tutor_reply": trim_text(entry.get("message"), 12000),
+            "error": trim_text(entry.get("error"), 2000),
+        },
+    }
+
+
+def chat_activity_key(entry: dict[str, Any]) -> tuple[str, str, str] | None:
+    chat = entry.get("chat") if isinstance(entry.get("chat"), dict) else {}
+    learner = str(chat.get("learner_message", "")).strip()
+    tutor = str(chat.get("tutor_reply", "")).strip()
+    error = str(chat.get("error", "")).strip()
+    if not learner and not tutor and not error:
+        return None
+    return (learner, tutor, error)
 
 
 def learner_request_from_payload(payload: dict[str, Any], messages: list[dict[str, str]]) -> str:
