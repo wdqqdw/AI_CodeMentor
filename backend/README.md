@@ -32,8 +32,11 @@ This directory is ignored by git. It stores:
 - `users.json`: usernames and password hashes.
 - `sessions.json`: active login sessions.
 - `histories/*.jsonl`: per-account Tutor conversation history.
+- `activities/*.jsonl`: per-account Run, Submit, Tutor chat, code snapshot, and testcase result records.
+- `account_summary.csv`: private account overview with username, password hash, login/activity timestamps, event counts, best score, and latest problem.
 
 Passwords are stored as PBKDF2-SHA256 hashes, not plaintext.
+The CSV intentionally records the password hash only; it should remain in the private data directory and must not be committed.
 
 ## Test
 

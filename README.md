@@ -2,7 +2,7 @@
 
 AI_CodeMentor is an AI-assisted coding practice prototype. The current public page focuses on a single deeper exercise, **Boggle Solver / 棋盘单词搜索**, with a Python coding panel, test feedback, and an AI Tutor chat panel.
 
-Last updated: 2026-07-25
+Last updated: 2026-07-26
 
 ## Quick Links
 
@@ -24,6 +24,8 @@ Last updated: 2026-07-25
 - Account system: enabled. The app opens with registration/login before AI Tutor can be used.
 - Structured activity logging: enabled for Run, Submit, and AI Tutor chat events.
 - Activity dashboard compatibility: legacy Tutor chat history is merged into the structured activity feed.
+- Boggle Solver testcases: 50 cases grouped into 5 learning tiers, with non-spoiling hints for the first 40 cases and fully hidden challenge cases for the hardest tier.
+- Private account summary CSV: enabled on the backend. The server maintains `account_summary.csv` inside the private backend data directory with usernames, password hashes, activity counts, best score, latest problem, and timestamps.
 
 ## Important Notes
 
@@ -31,6 +33,7 @@ Last updated: 2026-07-25
 - API keys, admin tokens, `.env.local`, backend logs, private account files, password hashes, sessions, and private chat history must stay outside this public repository.
 - Usernames, password hashes, login sessions, and per-account Tutor history are stored on the AutoDL server under the private backend data directory.
 - Per-account structured records are also stored privately, including code snapshots, problem metadata, test pass rates, visible testcase results, hidden testcase summaries, and Tutor message/reply snapshots.
+- The account summary CSV stores password hashes only, not plaintext passwords. Keep the entire private data directory off GitHub.
 - The backend debug page is for testing and inspection. Protected backend endpoints may require private credentials that should not be committed here.
 - If the AutoDL instance is stopped, restarted, out of balance, or reclaimed by the platform, the AI Tutor backend will be unavailable until the backend service and tunnel are launched again.
 
@@ -67,4 +70,5 @@ When making future changes, update this README in the same GitHub sync if any of
 - Debug/testing page path.
 - Account/authentication behavior.
 - Structured activity logging fields or dashboard path.
+- Private account summary CSV fields or storage location.
 - Any user-facing operational instruction.

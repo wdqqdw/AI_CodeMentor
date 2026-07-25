@@ -680,6 +680,14 @@ const groupTests = (tests) => {
   return groups;
 };
 
+const testcaseGroupDescriptions = {
+  "Tier 1 · Easy · Core Rules": "Warm up with board shape, adjacency, duplicate output, and no-reuse basics.",
+  "Tier 2 · Easy+ · Backtracking Paths": "Practice path state: 8 directions, bends, starts, and restoring visited cells.",
+  "Tier 3 · Medium · Prefix Pruning": "Focus on Trie/prefix pruning and shared dictionary stems.",
+  "Tier 4 · Medium+ · Edge Cases": "Check empty inputs, rectangular boards, repeated letters, and uncommon shapes.",
+  "Tier 5 · Hard · Hidden Challenge": "No hints here. These combine several earlier rules and stress correctness.",
+};
+
 const renderGroupedHintTestcases = () => {
   publicTestcases.classList.add("grouped-testcases");
   if (hiddenTestcasesSection) {
@@ -688,6 +696,7 @@ const renderGroupedHintTestcases = () => {
 
   publicTestcases.innerHTML = groupTests(allTests)
     .map((group) => {
+      const groupDescription = testcaseGroupDescriptions[group.name] || "Use this group to narrow the kind of mistake to inspect.";
       const casesHtml = group.tests
         .map(({ test, index }) => {
           const result = getCaseResult(test);
@@ -711,7 +720,10 @@ const renderGroupedHintTestcases = () => {
       return `
         <section class="testcase-group">
           <header>
-            <strong>${escapeHtml(group.name)}</strong>
+            <div>
+              <strong>${escapeHtml(group.name)}</strong>
+              <p>${escapeHtml(groupDescription)}</p>
+            </div>
             <span>${group.tests.length} cases</span>
           </header>
           <div class="hint-case-list">${casesHtml}</div>

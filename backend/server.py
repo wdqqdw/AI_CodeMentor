@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import hashlib
+import csv
 import json
 import os
 import re
@@ -73,6 +74,7 @@ USERS_PATH = PRIVATE_DATA_DIR / "users.json"
 SESSIONS_PATH = PRIVATE_DATA_DIR / "sessions.json"
 USER_HISTORY_DIR = PRIVATE_DATA_DIR / "histories"
 USER_ACTIVITY_DIR = PRIVATE_DATA_DIR / "activities"
+ACCOUNT_SUMMARY_CSV_PATH = PRIVATE_DATA_DIR / "account_summary.csv"
 
 USERNAME_RE = re.compile(r"^[A-Za-z0-9_.-]{3,32}$")
 HISTORY_LOCK = threading.Lock()
@@ -128,6 +130,97 @@ def write_json_file(path: Path, payload: dict[str, Any]) -> None:
     except OSError:
         pass
     temporary_path.replace(path)
+
+
+def activity_score(entry: dict[str, Any]) -> tuple[int, int]:
+    result = entry.get("result") if isinstance(entry.get("result"), dict) else {}
+    test_state = entry.get("test_state") if isinstance(entry.get("test_state"), dict) else {}
+    passed = safe_int(result.get("passed"), safe_int(test_state.get("passed")))
+    total = safe_int(result.get("total"), safe_int(test_state.get("total")))
+    return passed, total
+
+
+def refresh_account_summary_csv() -> None:
+    ensure_private_dirs()
+    with DATA_LOCK:
+        users = read_json_file(USERS_PATH, {"users": {}}).get("users", {})
+        rows = []
+
+        for user in sorted(users.values(), key=lambda item: str(item.get("username", "")).lower()):
+            user_id = str(user.get("id", ""))
+            entries = read_user_activity(user_id, limit=500000) if user_id else []
+            event_counts: defaultdict[str, int] = defaultdict(int)
+            best_passed = 0
+            best_total = 0
+            latest_problem = ""
+            last_activity_at = ""
+
+            for entry in entries:
+                event_type = str(entry.get("event_type", "activity") or "activity")
+                event_counts[event_type] += 1
+                created_at = str(entry.get("created_at", ""))
+                if created_at >= last_activity_at:
+                    last_activity_at = created_at
+                    problem = entry.get("problem") if isinstance(entry.get("problem"), dict) else {}
+                    latest_problem = str(problem.get("englishName") or problem.get("id") or "")
+
+                passed, total = activity_score(entry)
+                if total and (best_total == 0 or passed / total > best_passed / best_total):
+                    best_passed = passed
+                    best_total = total
+
+            best_percent = f"{(best_passed / best_total * 100):.1f}" if best_total else ""
+            rows.append(
+                {
+                    "user_id": user_id,
+                    "username": user.get("username", ""),
+                    "password_storage": "pbkdf2_sha256_hash_only",
+                    "password_hash": user.get("password_hash", ""),
+                    "created_at": user.get("created_at", ""),
+                    "last_login_at": user.get("last_login_at", ""),
+                    "last_activity_at": last_activity_at,
+                    "total_events": len(entries),
+                    "run_count": event_counts.get("run", 0),
+                    "submit_count": event_counts.get("submit", 0),
+                    "chat_count": event_counts.get("chat", 0),
+                    "chat_error_count": event_counts.get("chat_error", 0),
+                    "best_passed": best_passed or "",
+                    "best_total": best_total or "",
+                    "best_percent": best_percent,
+                    "latest_problem": latest_problem,
+                    "summary_updated_at": now_iso(),
+                }
+            )
+
+        fieldnames = [
+            "user_id",
+            "username",
+            "password_storage",
+            "password_hash",
+            "created_at",
+            "last_login_at",
+            "last_activity_at",
+            "total_events",
+            "run_count",
+            "submit_count",
+            "chat_count",
+            "chat_error_count",
+            "best_passed",
+            "best_total",
+            "best_percent",
+            "latest_problem",
+            "summary_updated_at",
+        ]
+        temporary_path = ACCOUNT_SUMMARY_CSV_PATH.with_suffix(".csv.tmp")
+        with temporary_path.open("w", encoding="utf-8", newline="") as file:
+            writer = csv.DictWriter(file, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
+        try:
+            os.chmod(temporary_path, 0o600)
+        except OSError:
+            pass
+        temporary_path.replace(ACCOUNT_SUMMARY_CSV_PATH)
 
 
 def normalize_username(username: str) -> str:
@@ -200,6 +293,7 @@ def create_user(username: str, password: str) -> dict[str, Any]:
         }
         users[username_key] = user
         write_json_file(USERS_PATH, store)
+        refresh_account_summary_csv()
         return user
 
 
@@ -213,6 +307,7 @@ def authenticate_user(username: str, password: str) -> dict[str, Any]:
 
         user["last_login_at"] = now_iso()
         write_json_file(USERS_PATH, store)
+        refresh_account_summary_csv()
         return user
 
 
@@ -360,11 +455,13 @@ def user_activity_path(user_id: str) -> Path:
 def append_user_history(user_id: str, entry: dict[str, Any]) -> None:
     ensure_private_dirs()
     append_jsonl(user_history_path(user_id), entry, DATA_LOCK)
+    refresh_account_summary_csv()
 
 
 def append_user_activity(user_id: str, entry: dict[str, Any]) -> None:
     ensure_private_dirs()
     append_jsonl(user_activity_path(user_id), entry, DATA_LOCK)
+    refresh_account_summary_csv()
 
 
 def read_jsonl_history(path: Path, limit: int = HISTORY_CHAR_LIMIT) -> list[dict[str, Any]]:
@@ -1042,6 +1139,7 @@ class TutorHandler(BaseHTTPRequestHandler):
 
 def main() -> None:
     ensure_private_dirs()
+    refresh_account_summary_csv()
     server = ThreadingHTTPServer((HOST, PORT), TutorHandler)
     print(f"CodeMentor local backend running at http://{HOST}:{PORT}")
     print(f"Model: {MODEL}")
