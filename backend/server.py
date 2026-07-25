@@ -51,7 +51,7 @@ BASE_URL = os.getenv("AUTODL_BASE_URL", "https://www.autodl.art/api/v1")
 MODEL = os.getenv("AI_MENTOR_MODEL", "DeepSeek-V4-Pro")
 HOST = os.getenv("HOST", "127.0.0.1")
 PORT = int(os.getenv("PORT", "8787"))
-MAX_BODY_BYTES = 256 * 1024
+MAX_BODY_BYTES = int(os.getenv("MAX_BODY_BYTES", str(512 * 1024)))
 HISTORY_CHAR_LIMIT = int(os.getenv("HISTORY_CHAR_LIMIT", "100000"))
 ALLOWED_ORIGINS = {
     origin.strip().rstrip("/")
@@ -72,6 +72,7 @@ PRIVATE_DATA_DIR = Path(os.getenv("CODEMENTOR_DATA_DIR", str(BACKEND_DIR / "priv
 USERS_PATH = PRIVATE_DATA_DIR / "users.json"
 SESSIONS_PATH = PRIVATE_DATA_DIR / "sessions.json"
 USER_HISTORY_DIR = PRIVATE_DATA_DIR / "histories"
+USER_ACTIVITY_DIR = PRIVATE_DATA_DIR / "activities"
 
 USERNAME_RE = re.compile(r"^[A-Za-z0-9_.-]{3,32}$")
 HISTORY_LOCK = threading.Lock()
@@ -100,7 +101,7 @@ def now_iso() -> str:
 
 
 def ensure_private_dirs() -> None:
-    for path in (PRIVATE_DATA_DIR, USER_HISTORY_DIR):
+    for path in (PRIVATE_DATA_DIR, USER_HISTORY_DIR, USER_ACTIVITY_DIR):
         path.mkdir(parents=True, exist_ok=True)
         try:
             os.chmod(path, 0o700)
@@ -327,6 +328,10 @@ def history_entry_size(entry: dict[str, Any]) -> int:
     return sum(len(part) for part in parts)
 
 
+def activity_entry_size(entry: dict[str, Any]) -> int:
+    return len(json.dumps(entry, ensure_ascii=False))
+
+
 def append_jsonl(path: Path, entry: dict[str, Any], lock: threading.Lock | threading.RLock) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with lock:
@@ -347,9 +352,19 @@ def user_history_path(user_id: str) -> Path:
     return USER_HISTORY_DIR / f"{safe_user_id}.jsonl"
 
 
+def user_activity_path(user_id: str) -> Path:
+    safe_user_id = re.sub(r"[^A-Za-z0-9_.-]", "_", user_id)
+    return USER_ACTIVITY_DIR / f"{safe_user_id}.jsonl"
+
+
 def append_user_history(user_id: str, entry: dict[str, Any]) -> None:
     ensure_private_dirs()
     append_jsonl(user_history_path(user_id), entry, DATA_LOCK)
+
+
+def append_user_activity(user_id: str, entry: dict[str, Any]) -> None:
+    ensure_private_dirs()
+    append_jsonl(user_activity_path(user_id), entry, DATA_LOCK)
 
 
 def read_jsonl_history(path: Path, limit: int = HISTORY_CHAR_LIMIT) -> list[dict[str, Any]]:
@@ -368,6 +383,31 @@ def read_jsonl_history(path: Path, limit: int = HISTORY_CHAR_LIMIT) -> list[dict
             continue
 
         size = history_entry_size(entry)
+        if entries and total + size > limit:
+            break
+        entries.append(entry)
+        total += size
+
+    entries.reverse()
+    return entries
+
+
+def read_jsonl_entries(path: Path, limit: int = HISTORY_CHAR_LIMIT, size_fn=activity_entry_size) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+
+    lines = path.read_text(encoding="utf-8").splitlines()
+    entries: list[dict[str, Any]] = []
+    total = 0
+    for line in reversed(lines):
+        if not line.strip():
+            continue
+        try:
+            entry = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+
+        size = size_fn(entry)
         if entries and total + size > limit:
             break
         entries.append(entry)
@@ -399,6 +439,122 @@ def read_user_history(user_id: str, limit: int = HISTORY_CHAR_LIMIT) -> list[dic
             }
         )
     return public_entries
+
+
+def read_user_activity(user_id: str, limit: int = HISTORY_CHAR_LIMIT) -> list[dict[str, Any]]:
+    with DATA_LOCK:
+        return read_jsonl_entries(user_activity_path(user_id), limit)
+
+
+def trim_text(value: Any, limit: int = 20000) -> str:
+    text = "" if value is None else str(value)
+    if len(text) <= limit:
+        return text
+    return text[:limit] + "\n... [truncated]"
+
+
+def safe_int(value: Any, fallback: int = 0) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return fallback
+
+
+def pick_dict(value: Any, allowed_keys: set[str]) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        return {}
+    return {key: value.get(key) for key in allowed_keys if key in value}
+
+
+def sanitize_code_state(value: Any) -> dict[str, Any]:
+    code = value if isinstance(value, dict) else {}
+    return {
+        "language": trim_text(code.get("language"), 40),
+        "source": trim_text(code.get("source"), 30000),
+        "status": trim_text(code.get("status"), 300),
+        "output": trim_text(code.get("output"), 4000),
+    }
+
+
+def sanitize_test_state(value: Any) -> dict[str, Any]:
+    state = value if isinstance(value, dict) else {}
+    visible = []
+    for item in state.get("visible", []) if isinstance(state.get("visible"), list) else []:
+        if not isinstance(item, dict):
+            continue
+        visible.append(
+            {
+                "index": item.get("index"),
+                "passed": bool(item.get("passed")),
+                "input": trim_text(item.get("input"), 2000),
+                "expected": trim_text(item.get("expected"), 2000),
+                "actual": trim_text(item.get("actual"), 2000),
+            }
+        )
+
+    hidden = state.get("hidden") if isinstance(state.get("hidden"), dict) else {}
+    return {
+        "scope": trim_text(state.get("scope"), 40) or "none",
+        "passed": safe_int(state.get("passed")),
+        "total": safe_int(state.get("total")),
+        "visible": visible[:10],
+        "hidden": {
+            "total": safe_int(hidden.get("total")),
+            "passed": safe_int(hidden.get("passed")),
+            "failed": safe_int(hidden.get("failed")),
+        },
+    }
+
+
+def sanitize_problem(value: Any) -> dict[str, Any]:
+    problem = pick_dict(
+        value,
+        {
+            "id",
+            "category",
+            "difficulty",
+            "englishName",
+            "chineseName",
+            "englishDescription",
+        },
+    )
+    for key, item in list(problem.items()):
+        problem[key] = trim_text(item, 1000)
+    return problem
+
+
+def build_activity_entry(user: dict[str, Any], payload: dict[str, Any], event_type: str | None = None) -> dict[str, Any]:
+    clean_event_type = trim_text(event_type or payload.get("event_type") or payload.get("eventType"), 40) or "activity"
+    if clean_event_type not in {"run", "submit", "chat", "chat_error", "activity"}:
+        clean_event_type = "activity"
+
+    chat = payload.get("chat") if isinstance(payload.get("chat"), dict) else {}
+    result = payload.get("result") if isinstance(payload.get("result"), dict) else {}
+    entry = {
+        "id": f"{int(time.time() * 1000)}-{threading.get_ident()}",
+        "created_at": now_iso(),
+        "client_created_at": trim_text(payload.get("client_created_at") or payload.get("clientCreatedAt"), 80),
+        "event_type": clean_event_type,
+        "user_id": user.get("id"),
+        "username": user.get("username"),
+        "problem": sanitize_problem(payload.get("problem")),
+        "code": sanitize_code_state(payload.get("code")),
+        "test_state": sanitize_test_state(payload.get("testState") or payload.get("test_state")),
+        "result": {
+            "passed": safe_int(result.get("passed")),
+            "total": safe_int(result.get("total")),
+            "all_passed": bool(result.get("all_passed") or result.get("allPassed")),
+            "label": trim_text(result.get("label"), 120),
+            "scope": trim_text(result.get("scope"), 40),
+            "error": trim_text(result.get("error"), 2000),
+        },
+        "chat": {
+            "learner_message": trim_text(chat.get("learner_message") or payload.get("message"), 6000),
+            "tutor_reply": trim_text(chat.get("tutor_reply"), 12000),
+            "error": trim_text(chat.get("error"), 2000),
+        },
+    }
+    return entry
 
 
 def learner_request_from_payload(payload: dict[str, Any], messages: list[dict[str, str]]) -> str:
@@ -572,6 +728,7 @@ class TutorHandler(BaseHTTPRequestHandler):
                     "model": MODEL,
                     "history_char_limit": HISTORY_CHAR_LIMIT,
                     "auth": True,
+                    "activity": True,
                 },
             )
             return
@@ -625,6 +782,27 @@ class TutorHandler(BaseHTTPRequestHandler):
             )
             return
 
+        if path == "/api/my-activity":
+            if not self.request_has_allowed_origin():
+                return
+            context = self.auth_context()
+            if not context:
+                return
+
+            query = parse_qs(urlparse(self.path).query)
+            limit = int(query.get("limit", [str(HISTORY_CHAR_LIMIT)])[0])
+            entries = read_user_activity(context["user"]["id"], max(1000, min(limit, 500000)))
+            self.send_json(
+                HTTPStatus.OK,
+                {
+                    "entries": entries,
+                    "count": len(entries),
+                    "char_limit": limit,
+                    "user": public_user(context["user"]),
+                },
+            )
+            return
+
         self.send_json(HTTPStatus.NOT_FOUND, {"error": "Not found"})
 
     def do_POST(self) -> None:
@@ -652,6 +830,23 @@ class TutorHandler(BaseHTTPRequestHandler):
                 return
             delete_session(context["token"])
             self.send_json(HTTPStatus.OK, {"ok": True})
+            return
+
+        if path == "/api/activity":
+            if not self.request_has_allowed_origin():
+                return
+            context = self.auth_context()
+            if not context:
+                return
+            if not self.enforce_rate_limit(f"activity:{context['user']['id']}"):
+                return
+            try:
+                payload = self.read_json_body()
+                entry = build_activity_entry(context["user"], payload)
+                append_user_activity(context["user"]["id"], entry)
+                self.send_json(HTTPStatus.CREATED, {"ok": True, "entry": entry})
+            except ValueError as error:
+                self.send_json(HTTPStatus.BAD_REQUEST, {"error": str(error)})
             return
 
         if path not in {"/api/tutor", "/api/debug-chat"}:
@@ -694,6 +889,19 @@ class TutorHandler(BaseHTTPRequestHandler):
             append_history(entry)
             if user:
                 append_user_history(user["id"], entry)
+                chat_activity = build_activity_entry(
+                    user,
+                    {
+                        **payload,
+                        "event_type": "chat",
+                        "chat": {
+                            "learner_message": learner_request_from_payload(payload, messages),
+                            "tutor_reply": content,
+                        },
+                    },
+                    "chat",
+                )
+                append_user_activity(user["id"], chat_activity)
 
             if path == "/api/debug-chat":
                 self.send_json(
@@ -724,6 +932,22 @@ class TutorHandler(BaseHTTPRequestHandler):
                 error_entry["user_id"] = context["user"]["id"]
                 error_entry["username"] = context["user"]["username"]
                 append_user_history(context["user"]["id"], error_entry)
+                error_activity = build_activity_entry(
+                    context["user"],
+                    {
+                        "event_type": "chat_error",
+                        "message": learner_request_from_payload(payload, messages) if "messages" in locals() else "",
+                        "problem": payload.get("problem") if "payload" in locals() else {},
+                        "code": payload.get("code") if "payload" in locals() else {},
+                        "testState": payload.get("testState") if "payload" in locals() else {},
+                        "chat": {
+                            "learner_message": learner_request_from_payload(payload, messages) if "messages" in locals() else "",
+                            "error": str(error),
+                        },
+                    },
+                    "chat_error",
+                )
+                append_user_activity(context["user"]["id"], error_activity)
             append_history(error_entry)
             self.send_json(HTTPStatus.BAD_GATEWAY, {"error": str(error)})
 
