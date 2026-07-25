@@ -45,6 +45,7 @@ const logoutButton = document.querySelector("#logout-button");
 const tutorApiUrl = window.CODEMENTOR_CONFIG?.tutorApiUrl || "http://127.0.0.1:8787/api/tutor";
 const backendBaseUrl =
   window.CODEMENTOR_CONFIG?.backendBaseUrl || tutorApiUrl.replace(/\/api\/tutor\/?$/, "");
+const activityApiUrl = window.CODEMENTOR_CONFIG?.activityApiUrl || `${backendBaseUrl}/api/activity`;
 const authStorageKey = "codementor.auth.v1";
 const problemStore = window.CODEMENTOR_PROBLEMS || {};
 const problemCatalog = problemStore.problemCatalog || [];
@@ -1110,13 +1111,60 @@ const buildTutorPayload = (message) => ({
   testState: buildTestStateContext(),
 });
 
-const execute = async (tests, label, scope) => {
+const buildActivityPayload = (eventType, result = {}) => ({
+  event_type: eventType,
+  client_created_at: new Date().toISOString(),
+  problem: buildProblemContext(),
+  code: {
+    language: languageSelect.value,
+    source: codeEditor.value,
+    status: statusMessage.textContent.trim(),
+    output: testOutput.textContent.trim(),
+  },
+  testState: buildTestStateContext(),
+  result,
+});
+
+const recordActivity = async (eventType, result = {}) => {
+  if (!authSession?.token) {
+    return;
+  }
+
+  try {
+    await fetch(activityApiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...authHeaders(),
+      },
+      body: JSON.stringify(buildActivityPayload(eventType, result)),
+    });
+  } catch (error) {
+    console.warn("Could not record learning activity", error);
+  }
+};
+
+const execute = async (tests, label, scope, eventType) => {
   setBusy(true);
+  let activityResult = {
+    label,
+    scope,
+    passed: 0,
+    total: tests.length,
+    all_passed: false,
+  };
 
   try {
     const results = await runTests(tests);
     const passedCount = results.filter((item) => item.passed).length;
     const allPassed = passedCount === results.length;
+    activityResult = {
+      label,
+      scope,
+      passed: passedCount,
+      total: results.length,
+      all_passed: allPassed,
+    };
 
     latestScope = scope;
     latestResults = new Map(results.map((item) => [item.id, item]));
@@ -1134,17 +1182,22 @@ const execute = async (tests, label, scope) => {
     renderTestcases();
     setOutput(error.message, "fail");
     setStatus("Code error", "fail");
+    activityResult = {
+      ...activityResult,
+      error: error.message,
+    };
   } finally {
     setBusy(false);
+    recordActivity(eventType, activityResult);
   }
 };
 
 runButton.addEventListener("click", () => {
-  execute(allTests, "All testcases", "all");
+  execute(allTests, "All testcases", "all", "run");
 });
 
 submitButton.addEventListener("click", () => {
-  execute(allTests, "All testcases", "all");
+  execute(allTests, "All testcases", "all", "submit");
 });
 
 if (openCatalogButton) {
