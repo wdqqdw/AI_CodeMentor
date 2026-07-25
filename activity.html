@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CodeMentor AI Activity</title>
+    <link rel="stylesheet" href="./activity.css?v=structured-activity-1" />
+  </head>
+  <body>
+    <main class="activity-app">
+      <header class="activity-header">
+        <a class="brand" href="./index.html" aria-label="Back to CodeMentor AI">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 64 64" role="img">
+              <path d="M32 3 58 18v28L32 61 6 46V18L32 3Z" />
+              <path d="M32 11 50.5 21.7v20.6L32 53 13.5 42.3V21.7L32 11Z" />
+              <path d="M25.2 23.4 17.8 31l7.4 7.6M38.8 23.4 46.2 31l-7.4 7.6M35.5 18.9 28.5 43.1" />
+            </svg>
+          </span>
+          <span>CodeMentor <strong>AI</strong></span>
+        </a>
+        <div class="header-actions">
+          <p id="activity-status">Sign in to view activity</p>
+          <button id="refresh-button" type="button" hidden>Refresh</button>
+          <button id="logout-button" type="button" hidden>Log out</button>
+        </div>
+      </header>
+
+      <section class="login-panel" id="login-panel">
+        <div>
+          <span>Learning Activity</span>
+          <h1>Structured Records</h1>
+          <p>Log in with your CodeMentor account to review Run, Submit, and AI Tutor events.</p>
+        </div>
+        <form id="login-form" class="login-form">
+          <label for="activity-username">Username</label>
+          <input id="activity-username" autocomplete="username" required />
+          <label for="activity-password">Password</label>
+          <input id="activity-password" type="password" autocomplete="current-password" required />
+          <button type="submit">Log in</button>
+          <p id="login-message" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section class="activity-dashboard" id="activity-dashboard" hidden>
+        <div class="summary-grid" id="summary-grid" aria-label="Activity summary"></div>
+        <section class="activity-timeline" id="activity-timeline" aria-live="polite">
+          <div class="empty-state">
+            <strong>No structured records yet.</strong>
+            <span>Run code, submit, or chat with AI Tutor from the main page.</span>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script>
+      window.CODEMENTOR_CONFIG = {
+        backendBaseUrl: "https://frequent-reflection-combinations-raises.trycloudflare.com",
+      };
+    </script>
+    <script src="./activity.js?v=structured-activity-1"></script>
+  </body>
+</html>
