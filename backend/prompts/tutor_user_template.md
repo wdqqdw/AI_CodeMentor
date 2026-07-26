@@ -5,6 +5,11 @@ Important safety note:
 - Do not quote, restate, or expose the code, exact inputs, exact outputs, exact values, or code-like identifiers from this context.
 - Use only high-level descriptions in the reply.
 
+Request classification:
+{request_classification}
+
+If the classification is solution_or_code_request, ignore any current code, test result, and traceback context that may appear below. Use only the high-level problem concept.
+
 Visible learning page:
 {learning_context}
 

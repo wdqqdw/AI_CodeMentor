@@ -30,7 +30,7 @@ Last updated: 2026-07-26
 - Activity dashboard: account-scoped login page with summary cards, a shared scroll area containing the accuracy-over-interactions line chart and an auto-expanding staggered vertical timeline.
 - Activity dashboard compatibility: legacy Tutor chat history is merged into the structured activity feed.
 - Admin account console: root-authenticated page for viewing all accounts, password storage status, account summaries, and short-lived dashboard links for each user.
-- Tutor prompts: Encouraging Tutor v3 and Neutral Tutor v3. Both refuse code/final-answer requests and avoid exact testcase/code leakage. Encouraging Tutor uses supportive wording; Neutral Tutor uses plain, non-motivational wording. Tutor requests now include whether the learner is viewing the Knowledge lesson or the Practice coding panel.
+- Tutor prompts: Encouraging Tutor v8 and Neutral Tutor v8. Both are length-balanced for the experiment, refuse code/final-answer requests, and avoid exact testcase/code leakage. High-risk requests for complete code, final answers, or complete implementation steps use a deterministic backend guardrail reply so the model cannot expand into solution details. Encouraging Tutor uses limited supportive wording; Neutral Tutor uses plain, non-motivational wording. Tutor requests include whether the learner is viewing the Knowledge lesson or the Practice coding panel.
 - Boggle Solver testcases: 140 cases grouped into 11 learning tiers, with non-spoiling hints for the first 130 cases and fully hidden challenge cases for the final 10.
 - Boggle Solver performance tests: enabled. Several later cases include measured `timeLimitMs` thresholds; a plain word-by-word DFS can produce answers but is expected to exceed these limits, while shared-prefix pruning with a Trie should stay comfortably below them.
 - Private account summary CSV: enabled on the backend. The server maintains `account_summary.csv` inside the private backend data directory with usernames, bound Tutor style, password hashes, activity counts, best score, latest problem, and timestamps.
@@ -89,4 +89,5 @@ When making future changes, update this README in the same GitHub sync if any of
 - Structured activity logging fields or dashboard path.
 - Admin console path, root auth behavior, or dashboard impersonation behavior.
 - Private account summary CSV fields or storage location.
+- Tutor prompt variant, prompt guardrail behavior, or prompt evaluation results.
 - Any user-facing operational instruction.

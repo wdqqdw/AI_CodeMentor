@@ -23,7 +23,7 @@ from urllib.parse import parse_qs, urlparse
 
 from openai import OpenAI
 
-from prompt import build_tutor_messages
+from prompt import build_tutor_messages, is_solution_request
 
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -270,6 +270,22 @@ def tutor_mode_for_user(user: dict[str, Any]) -> str:
         return normalize_tutor_mode(user.get("tutor_mode"))
     except ValueError:
         return DEFAULT_TUTOR_MODE
+
+
+def solution_request_guardrail_reply(tutor_mode: Any) -> str:
+    mode = normalize_tutor_mode(tutor_mode)
+    if mode == "neutral":
+        return (
+            "代码、最终答案和详细实现结构不能提供。"
+            "当前问题可先抽象为路径搜索：每一步只保留合法且未使用的相邻格子，并在无效方向停止。"
+            "路径推进和回退时，哪些状态必须保持一致，才能保证后续搜索不受影响？"
+        )
+
+    return (
+        "我理解你想直接看到答案，但我不能提供代码、最终答案或详细实现结构。"
+        "先把注意力放在路径搜索：每一步只考虑合法且未使用的相邻格子。"
+        "你已经接近核心了，当前路径需要记住什么信息，才能在回退时恢复状态？"
+    )
 
 
 def public_user(user: dict[str, Any]) -> dict[str, Any]:
@@ -1390,7 +1406,9 @@ class TutorHandler(BaseHTTPRequestHandler):
             tutor_mode = tutor_mode_for_user(user) if user else DEFAULT_TUTOR_MODE
             messages = build_tutor_messages(payload, tutor_mode=tutor_mode) if path == "/api/tutor" else clean_messages(payload)
             raw_prompt = format_raw_prompt(messages)
-            content = stream_chat_text(messages)
+            learner_request = learner_request_from_payload(payload, messages)
+            guardrail_used = path == "/api/tutor" and is_solution_request(learner_request)
+            content = solution_request_guardrail_reply(tutor_mode) if guardrail_used else stream_chat_text(messages)
             entry = {
                 "id": f"{int(time.time() * 1000)}-{threading.get_ident()}",
                 "created_at": now_iso(),
@@ -1398,7 +1416,8 @@ class TutorHandler(BaseHTTPRequestHandler):
                 "model": MODEL,
                 "tutor_mode": tutor_mode if path == "/api/tutor" else "",
                 "template_used": payload.get("messages") is None,
-                "learner_request": learner_request_from_payload(payload, messages),
+                "guardrail_used": guardrail_used,
+                "learner_request": learner_request,
                 "messages": messages,
                 "raw_prompt": raw_prompt,
                 "message": content,
@@ -1414,7 +1433,7 @@ class TutorHandler(BaseHTTPRequestHandler):
                         **payload,
                         "event_type": "chat",
                         "chat": {
-                            "learner_message": learner_request_from_payload(payload, messages),
+                            "learner_message": learner_request,
                             "tutor_reply": content,
                         },
                     },
