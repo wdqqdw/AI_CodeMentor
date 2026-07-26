@@ -76,6 +76,7 @@ let pyodideReadyPromise = null;
 let latestResults = new Map();
 let latestScope = "none";
 let latestTraceback = "";
+let latestTracebackCases = [];
 let chatBusy = false;
 let authMode = "register";
 let authSession = null;
@@ -157,12 +158,32 @@ const setLeftView = (view) => {
 
 const setTraceback = (text = "", summary = "No traceback", state = "") => {
   latestTraceback = String(text || "").trim();
+  if (!latestTraceback) {
+    latestTracebackCases = [];
+  }
   editorPanel.classList.toggle("has-traceback", Boolean(latestTraceback));
   tracebackSummary.className = `traceback-summary ${state}`.trim();
   tracebackSummary.innerHTML = latestTraceback
     ? `<strong>${escapeHtml(summary)}</strong><span>Full runtime error from the latest failed run.</span>`
     : `<strong>No traceback</strong><span>Runtime errors will appear here with the full stack trace.</span>`;
   tracebackContent.textContent = latestTraceback || "Run the code to capture a traceback.";
+};
+
+const setCaseTracebacks = (cases = []) => {
+  latestTracebackCases = cases;
+  if (!cases.length) {
+    setTraceback();
+    return;
+  }
+
+  const text = cases
+    .map((item) => {
+      const title = `Case ${item.index}${item.id ? ` (${item.id})` : ""}: ${item.summary}`;
+      return `${title}\n${"=".repeat(title.length)}\n${item.traceback}`;
+    })
+    .join("\n\n");
+
+  setTraceback(text, `${cases.length} case${cases.length > 1 ? "s" : ""} with traceback`, "fail");
 };
 
 const setBusy = (isBusy) => {
@@ -617,6 +638,30 @@ const renderProblem = () => {
 
 const getCaseResult = (test) => latestResults.get(test.id);
 
+const getResultState = (result) => {
+  if (!result) {
+    return "pending";
+  }
+
+  if (result.error) {
+    return "error";
+  }
+
+  return result.passed ? "pass" : "fail";
+};
+
+const getResultStatus = (result) => {
+  if (!result) {
+    return "READY";
+  }
+
+  if (result.error) {
+    return "ERROR";
+  }
+
+  return result.passed ? "PASS" : "FAIL";
+};
+
 const getTestInput = (test) => {
   if (test.input && typeof test.input === "object") {
     return test.input;
@@ -660,6 +705,8 @@ const getTestArgs = (test) => {
 
 const getExpected = (test) => test.expected;
 
+const canRevealCaseInput = (test) => currentProblem?.disclosureStyle !== "grouped_hints" && visibleTestIds.has(test.id);
+
 const formatCaseInput = (test) => {
   if (test.displayInput) {
     return test.displayInput;
@@ -686,9 +733,9 @@ const renderTestcases = () => {
   publicTestcases.innerHTML = visibleTests
     .map((test, index) => {
       const result = getCaseResult(test);
-      const state = result ? (result.passed ? "pass" : "fail") : "pending";
-      const actual = result ? formatValue(result.result) : "-";
-      const status = result ? (result.passed ? "PASS" : "FAIL") : "READY";
+      const state = getResultState(result);
+      const actual = result ? (result.error ? result.error : formatValue(result.result)) : "-";
+      const status = getResultStatus(result);
 
       return `
         <article class="testcase-card ${state}">
@@ -704,7 +751,7 @@ actual = ${escapeHtml(actual)}</pre>
   hiddenTestcaseGrid.innerHTML = hiddenTests
     .map((test, index) => {
       const result = getCaseResult(test);
-      const state = result ? (result.passed ? "pass" : "fail") : "pending";
+      const state = getResultState(result);
       return `<div class="hidden-case ${state}" title="Hidden case ${visibleTestCount + index + 1}">${visibleTestCount + index + 1}</div>`;
     })
     .join("");
@@ -765,8 +812,8 @@ const renderGroupedHintTestcases = () => {
       const casesHtml = group.tests
         .map(({ test, index }) => {
           const result = getCaseResult(test);
-          const state = result ? (result.passed ? "pass" : "fail") : "pending";
-          const status = result ? (result.passed ? "PASS" : "FAIL") : "READY";
+          const state = getResultState(result);
+          const status = getResultStatus(result);
           const hint = test.locked ? "" : test.hint || "";
           const hintHtml = hint ? `<span class="case-hint">${escapeHtml(hint)}</span>` : "";
 
@@ -1054,50 +1101,68 @@ const isValidResult = (result, test) => {
   return deepEqual(result, getExpected(test));
 };
 
+const normalizeCaseError = (error, index, test) => {
+  const runtimeError = error instanceof Error ? error : new Error(String(error));
+  runtimeError.caseIndex = index + 1;
+  runtimeError.caseId = test.id;
+  if (canRevealCaseInput(test)) {
+    runtimeError.caseInput = formatCaseInput(test);
+  } else {
+    runtimeError.caseInputHidden = true;
+  }
+  return runtimeError;
+};
+
 const runTests = async (tests) => {
   const language = languageSelect.value;
   const jsSolution = language === "javascript" ? getJavaScriptSolution() : null;
   const results = [];
 
   for (const [index, test] of tests.entries()) {
-    const args = getTestArgs(test);
     const caseStart = window.performance?.now ? window.performance.now() : Date.now();
-    let result;
     try {
+      const args = getTestArgs(test);
+      let result;
       result = language === "python" ? await runPythonCase(test) : jsSolution(...args);
-    } catch (error) {
-      const runtimeError = error instanceof Error ? error : new Error(String(error));
-      runtimeError.caseIndex = index + 1;
-      runtimeError.caseId = test.id;
-      runtimeError.caseInput = formatCaseInput(test);
-      throw runtimeError;
-    }
-    if (result === undefined && args.length && Array.isArray(args[0])) {
-      result = args[0];
-    }
-    const elapsedMs = (window.performance?.now ? window.performance.now() : Date.now()) - caseStart;
-    const timeLimitMs = Number(test.timeLimitMs || 0);
-    if (timeLimitMs > 0 && elapsedMs > timeLimitMs) {
-      const timeoutError = new Error(
-        `Time limit exceeded on case ${index + 1}: ${Math.round(elapsedMs)}ms > ${timeLimitMs}ms. Try using shared-prefix pruning instead of searching every word independently.`,
-      );
-      timeoutError.name = "TimeLimitError";
-      timeoutError.caseIndex = index + 1;
-      timeoutError.caseId = test.id;
-      timeoutError.caseInput = formatCaseInput(test);
-      throw timeoutError;
-    }
-    const passed = isValidResult(result, test);
+      if (result === undefined && args.length && Array.isArray(args[0])) {
+        result = args[0];
+      }
+      const elapsedMs = (window.performance?.now ? window.performance.now() : Date.now()) - caseStart;
+      const timeLimitMs = Number(test.timeLimitMs || 0);
+      if (timeLimitMs > 0 && elapsedMs > timeLimitMs) {
+        const timeoutError = new Error(
+          `Time limit exceeded on case ${index + 1}: ${Math.round(elapsedMs)}ms > ${timeLimitMs}ms. Try using shared-prefix pruning instead of searching every word independently.`,
+        );
+        timeoutError.name = "TimeLimitError";
+        throw timeoutError;
+      }
+      const passed = isValidResult(result, test);
 
-    results.push({
-      id: test.id,
-      index: index + 1,
-      passed,
-      result,
-      elapsedMs: Math.round(elapsedMs),
-      input: getTestInput(test),
-      expected: getExpected(test),
-    });
+      results.push({
+        id: test.id,
+        index: index + 1,
+        passed,
+        result,
+        elapsedMs: Math.round(elapsedMs),
+        input: getTestInput(test),
+        expected: getExpected(test),
+      });
+    } catch (error) {
+      const elapsedMs = (window.performance?.now ? window.performance.now() : Date.now()) - caseStart;
+      const runtimeError = normalizeCaseError(error, index, test);
+      const summary = errorSummary(runtimeError);
+      results.push({
+        id: test.id,
+        index: index + 1,
+        passed: false,
+        result: "Error",
+        error: summary,
+        traceback: formatTraceback(runtimeError),
+        elapsedMs: Math.round(elapsedMs),
+        input: getTestInput(test),
+        expected: getExpected(test),
+      });
+    }
   }
 
   return results;
@@ -1105,21 +1170,24 @@ const runTests = async (tests) => {
 
 const formatResults = (results) => {
   const failed = results.filter((item) => !item.passed);
+  const errors = failed.filter((item) => item.error);
 
   if (!failed.length) {
     return `PASS ${results.length}/${results.length} testcases passed`;
   }
 
   if (currentProblem?.disclosureStyle === "grouped_hints") {
-    return `FAIL ${failed.length} testcase${failed.length > 1 ? "s" : ""} failed. Open Testcases to see category hints; inputs and expected answers are hidden.`;
+    const errorText = errors.length ? ` ${errors.length} case${errors.length > 1 ? "s" : ""} raised runtime errors; open Traceback.` : "";
+    return `FAIL ${failed.length} testcase${failed.length > 1 ? "s" : ""} failed.${errorText} Open Testcases to see category hints; inputs and expected answers are hidden.`;
   }
 
   const visibleFailures = failed.filter((item) => visibleTestIds.has(item.id));
   const hiddenFailureCount = failed.length - visibleFailures.length;
   const lines = visibleFailures.map((item) => {
-      const icon = item.passed ? "PASS" : "FAIL";
+      const icon = item.error ? "ERROR" : "FAIL";
       const test = visibleTests.find((candidate) => candidate.id === item.id);
-      return `${icon} Test ${item.index}: input=${test ? formatCaseInput(test) : "-"}, output=${formatValue(item.result)}`;
+      const output = item.error ? item.error : formatValue(item.result);
+      return `${icon} Test ${item.index}: input=${test ? formatCaseInput(test) : "-"}, output=${output}`;
   });
 
   if (hiddenFailureCount) {
@@ -1143,6 +1211,7 @@ const formatTraceback = (error) => {
     `Language: ${languageSelect.value}`,
     error?.caseIndex ? `Failed case: ${error.caseIndex}${error.caseId ? ` (${error.caseId})` : ""}` : "",
     error?.caseInput ? `Case input: ${error.caseInput}` : "",
+    error?.caseInputHidden ? "Case input: hidden by testcase disclosure rules" : "",
     `Captured at: ${new Date().toLocaleString()}`,
   ].filter(Boolean);
 
@@ -1210,6 +1279,7 @@ const buildTestStateContext = () => {
   const passed = results.filter((item) => item.passed).length;
   const hiddenResults = hiddenTests.map((test) => getCaseResult(test)).filter(Boolean);
   const hiddenPassed = hiddenResults.filter((item) => item.passed).length;
+  const hiddenErrors = hiddenResults.filter((item) => item.error).length;
 
   return {
     scope: latestScope,
@@ -1228,6 +1298,7 @@ const buildTestStateContext = () => {
           input: formatCaseInput(test),
           expected: formatValue(getExpected(test)),
           actual: formatResultValue(result.result),
+          error: result.error || "",
         };
       })
       .filter(Boolean),
@@ -1235,6 +1306,7 @@ const buildTestStateContext = () => {
       total: hiddenTests.length,
       passed: hiddenPassed,
       failed: Math.max(0, hiddenResults.length - hiddenPassed),
+      errors: hiddenErrors,
     },
   };
 };
@@ -1256,6 +1328,12 @@ const buildTutorPayload = (message) => ({
     status: statusMessage.textContent.trim(),
     output: testOutput.textContent.trim(),
     traceback: latestTraceback,
+    tracebacks: latestTracebackCases.map((item) => ({
+      index: item.index,
+      id: item.id,
+      summary: item.summary,
+      traceback: item.traceback,
+    })),
   },
   testState: buildTestStateContext(),
 });
@@ -1270,6 +1348,12 @@ const buildActivityPayload = (eventType, result = {}) => ({
     status: statusMessage.textContent.trim(),
     output: testOutput.textContent.trim(),
     traceback: latestTraceback,
+    tracebacks: latestTracebackCases.map((item) => ({
+      index: item.index,
+      id: item.id,
+      summary: item.summary,
+      traceback: item.traceback,
+    })),
   },
   testState: buildTestStateContext(),
   result,
@@ -1307,6 +1391,7 @@ const execute = async (tests, label, scope, eventType) => {
   try {
     const results = await runTests(tests);
     const passedCount = results.filter((item) => item.passed).length;
+    const errorCases = results.filter((item) => item.error);
     const allPassed = passedCount === results.length;
     activityResult = {
       label,
@@ -1314,25 +1399,55 @@ const execute = async (tests, label, scope, eventType) => {
       passed: passedCount,
       total: results.length,
       all_passed: allPassed,
+      errors: errorCases.map((item) => ({
+        index: item.index,
+        id: item.id,
+        summary: item.error,
+        traceback: item.traceback,
+      })),
     };
 
     latestScope = scope;
     latestResults = new Map(results.map((item) => [item.id, item]));
-    setTraceback();
+    setCaseTracebacks(
+      errorCases.map((item) => ({
+        index: item.index,
+        id: item.id,
+        summary: item.error,
+        traceback: item.traceback,
+      })),
+    );
     renderTestcases();
     setOutput(formatResults(results), allPassed ? "pass" : "fail");
-    setStatus(allPassed ? `${label} passed` : `${passedCount}/${results.length} tests passed`, allPassed ? "pass" : "fail");
+    if (errorCases.length) {
+      setActiveEditorTab("traceback");
+    }
+    const statusText = allPassed
+      ? `${label} passed`
+      : errorCases.length
+        ? `${passedCount}/${results.length} tests passed, ${errorCases.length} errors`
+        : `${passedCount}/${results.length} tests passed`;
+    setStatus(statusText, allPassed ? "pass" : "fail");
   } catch (error) {
     const traceback = formatTraceback(error);
     latestScope = scope;
     latestResults = new Map(
       tests.map((test, index) => [
         test.id,
-        { id: test.id, index: index + 1, passed: false, result: "Error", input: getTestInput(test), expected: getExpected(test) },
+        {
+          id: test.id,
+          index: index + 1,
+          passed: false,
+          result: "Error",
+          error: errorSummary(error),
+          traceback,
+          input: getTestInput(test),
+          expected: getExpected(test),
+        },
       ]),
     );
     renderTestcases();
-    setTraceback(traceback, errorSummary(error), "fail");
+    setCaseTracebacks([{ index: "setup", id: "setup", summary: errorSummary(error), traceback }]);
     setActiveEditorTab("traceback");
     setOutput(`Code error. Open Traceback for full details: ${errorSummary(error)}`, "fail");
     setStatus("Code error", "fail");

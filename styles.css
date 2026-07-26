@@ -1659,6 +1659,11 @@ svg {
   background: #fff6f6;
 }
 
+.hint-case.error {
+  border-color: rgba(218, 126, 24, 0.42);
+  background: #fff8ef;
+}
+
 .hint-case.pending {
   background: #ffffff;
 }
@@ -1685,6 +1690,18 @@ svg {
   min-height: 38px;
 }
 
+.hint-case.pass .case-status {
+  color: var(--green);
+}
+
+.hint-case.fail .case-status {
+  color: var(--red);
+}
+
+.hint-case.error .case-status {
+  color: #c86c12;
+}
+
 .testcase-card {
   min-width: 0;
   padding: 10px;
@@ -1701,6 +1718,11 @@ svg {
 .testcase-card.fail {
   border-color: rgba(217, 57, 57, 0.34);
   background: #fff6f6;
+}
+
+.testcase-card.error {
+  border-color: rgba(218, 126, 24, 0.42);
+  background: #fff8ef;
 }
 
 .testcase-card.pending {
@@ -1728,6 +1750,10 @@ svg {
 
 .testcase-card.fail .case-status {
   color: var(--red);
+}
+
+.testcase-card.error .case-status {
+  color: #c86c12;
 }
 
 .testcase-card.pending .case-status {
@@ -1782,6 +1808,12 @@ svg {
   color: #ffffff;
   background: var(--red);
   border-color: var(--red);
+}
+
+.hidden-case.error {
+  color: #ffffff;
+  background: #d87918;
+  border-color: #d87918;
 }
 
 .execution-row {

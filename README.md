@@ -25,7 +25,7 @@ Last updated: 2026-07-26
 - Backend conversation history window: latest `100000` characters.
 - Account system: enabled. The app opens with registration/login before AI Tutor can be used.
 - Tutor style binding: enabled. Each account is permanently bound to one Tutor style at registration, or at the next login for older unbound accounts.
-- Runtime error display: enabled. The editor has a dedicated `Traceback` tab that shows the full latest runtime error instead of truncating it in the bottom status strip.
+- Runtime error display: enabled. The editor has a dedicated `Traceback` tab that shows full per-case runtime errors instead of truncating them in the bottom status strip. A single case error does not stop the remaining cases from running.
 - Structured activity logging: enabled for Run, Submit, and AI Tutor chat events.
 - Activity dashboard: account-scoped login page with summary cards, a shared scroll area containing the accuracy-over-interactions line chart and an auto-expanding staggered vertical timeline.
 - Activity dashboard compatibility: legacy Tutor chat history is merged into the structured activity feed.
