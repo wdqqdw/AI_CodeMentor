@@ -747,7 +747,10 @@ const testcaseGroupDescriptions = {
   "Tier 5 · Hard · Mixed Rule Stacks": "Several correctness rules interact in one board; debug one rule at a time.",
   "Tier 6 · Hard · Corner Cases": "Focus on unusual inputs, duplicates, one-dimensional boards, and literal q/u cells.",
   "Tier 7 · Very Hard · Performance & Pruning": "These cases reward Trie pruning and punish repeated full-board searches.",
-  "Tier 8 · Final · No Hints": "No hints here. These combine earlier rules and stress correctness.",
+  "Tier 8 · Hard · Integration Challenge": "These combine earlier rules on denser boards with several tempting near matches.",
+  "Tier 9 · Very Hard · Scale and Shape": "Larger or less regular boards test shape handling, boundaries, and path discipline.",
+  "Tier 10 · Performance · Prefix Pruning": "These cases are measured to separate repeated word-by-word DFS from shared-prefix pruning.",
+  "Tier 11 · Final · No Hints": "No hints here. These combine correctness and performance pressure.",
 };
 
 const renderGroupedHintTestcases = () => {
@@ -1058,6 +1061,7 @@ const runTests = async (tests) => {
 
   for (const [index, test] of tests.entries()) {
     const args = getTestArgs(test);
+    const caseStart = window.performance?.now ? window.performance.now() : Date.now();
     let result;
     try {
       result = language === "python" ? await runPythonCase(test) : jsSolution(...args);
@@ -1071,6 +1075,18 @@ const runTests = async (tests) => {
     if (result === undefined && args.length && Array.isArray(args[0])) {
       result = args[0];
     }
+    const elapsedMs = (window.performance?.now ? window.performance.now() : Date.now()) - caseStart;
+    const timeLimitMs = Number(test.timeLimitMs || 0);
+    if (timeLimitMs > 0 && elapsedMs > timeLimitMs) {
+      const timeoutError = new Error(
+        `Time limit exceeded on case ${index + 1}: ${Math.round(elapsedMs)}ms > ${timeLimitMs}ms. Try using shared-prefix pruning instead of searching every word independently.`,
+      );
+      timeoutError.name = "TimeLimitError";
+      timeoutError.caseIndex = index + 1;
+      timeoutError.caseId = test.id;
+      timeoutError.caseInput = formatCaseInput(test);
+      throw timeoutError;
+    }
     const passed = isValidResult(result, test);
 
     results.push({
@@ -1078,6 +1094,7 @@ const runTests = async (tests) => {
       index: index + 1,
       passed,
       result,
+      elapsedMs: Math.round(elapsedMs),
       input: getTestInput(test),
       expected: getExpected(test),
     });

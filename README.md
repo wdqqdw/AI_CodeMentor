@@ -31,7 +31,8 @@ Last updated: 2026-07-26
 - Activity dashboard compatibility: legacy Tutor chat history is merged into the structured activity feed.
 - Admin account console: root-authenticated page for viewing all accounts, password storage status, account summaries, and short-lived dashboard links for each user.
 - Tutor prompts: Encouraging Tutor v3 and Neutral Tutor v3. Both refuse code/final-answer requests and avoid exact testcase/code leakage. Encouraging Tutor uses supportive wording; Neutral Tutor uses plain, non-motivational wording. Tutor requests now include whether the learner is viewing the Knowledge lesson or the Practice coding panel.
-- Boggle Solver testcases: 100 cases grouped into 8 learning tiers, with non-spoiling hints for the first 90 cases and fully hidden challenge cases for the final 10.
+- Boggle Solver testcases: 140 cases grouped into 11 learning tiers, with non-spoiling hints for the first 130 cases and fully hidden challenge cases for the final 10.
+- Boggle Solver performance tests: enabled. Several later cases include measured `timeLimitMs` thresholds; a plain word-by-word DFS can produce answers but is expected to exceed these limits, while shared-prefix pruning with a Trie should stay comfortably below them.
 - Private account summary CSV: enabled on the backend. The server maintains `account_summary.csv` inside the private backend data directory with usernames, bound Tutor style, password hashes, activity counts, best score, latest problem, and timestamps.
 
 ## Important Notes
@@ -81,6 +82,7 @@ When making future changes, update this README in the same GitHub sync if any of
 - Live page URL.
 - Current backend tunnel URL.
 - Current focused exercise.
+- Testcase count, disclosure tiers, or performance timing thresholds.
 - Backend model, port, or deployment location.
 - Debug/testing page path.
 - Account/authentication behavior.
