@@ -1,6 +1,8 @@
 const statusMessage = document.querySelector(".status-message");
 const runButton = document.querySelector("[data-action='run']");
 const submitButton = document.querySelector("[data-action='submit']");
+const runButtonLabel = runButton?.querySelector("span");
+const submitButtonLabel = submitButton?.querySelector("span");
 const bookmarkButton = document.querySelector(".bookmark");
 const chatForm = document.querySelector(".chat-composer");
 const chatInput = document.querySelector("#mentor-input");
@@ -78,6 +80,7 @@ let latestScope = "none";
 let latestTraceback = "";
 let latestTracebackCases = [];
 let chatBusy = false;
+let executionBusy = false;
 let authMode = "register";
 let authSession = null;
 let activeProblemPath = problemStore.markdownProblemPath || "";
@@ -186,10 +189,19 @@ const setCaseTracebacks = (cases = []) => {
   setTraceback(text, `${cases.length} case${cases.length > 1 ? "s" : ""} with traceback`, "fail");
 };
 
-const setBusy = (isBusy) => {
+const setBusy = (isBusy, action = "") => {
+  executionBusy = isBusy;
   runButton.disabled = isBusy;
   submitButton.disabled = isBusy;
   languageSelect.disabled = isBusy;
+  runButton.setAttribute("aria-busy", String(isBusy && action === "run"));
+  submitButton.setAttribute("aria-busy", String(isBusy && action === "submit"));
+  if (runButtonLabel) {
+    runButtonLabel.textContent = isBusy && action === "run" ? "Running..." : "Run";
+  }
+  if (submitButtonLabel) {
+    submitButtonLabel.textContent = isBusy && action === "submit" ? "Submitting..." : "Submit";
+  }
 };
 
 const backendUrl = (path) => `${backendBaseUrl}${path}`;
@@ -1379,7 +1391,14 @@ const recordActivity = async (eventType, result = {}) => {
 };
 
 const execute = async (tests, label, scope, eventType) => {
-  setBusy(true);
+  if (executionBusy) {
+    return;
+  }
+
+  setBusy(true, eventType);
+  const busyLabel = eventType === "submit" ? "Submitting" : "Running";
+  setStatus(`${busyLabel} ${tests.length} tests...`, "pass");
+  setOutput(`${busyLabel} ${label.toLowerCase()}...`, "");
   let activityResult = {
     label,
     scope,

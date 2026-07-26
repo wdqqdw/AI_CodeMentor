@@ -1847,6 +1847,18 @@ svg {
   box-shadow: 0 8px 18px rgba(109, 44, 240, 0.22);
 }
 
+.run-button:disabled,
+.submit-button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+  box-shadow: none;
+}
+
+.run-button[aria-busy="true"] svg,
+.submit-button[aria-busy="true"] svg {
+  animation: buttonPulse 0.9s ease-in-out infinite alternate;
+}
+
 .run-button svg,
 .submit-button svg,
 .send-button svg {
@@ -1882,6 +1894,18 @@ svg {
 
 .status-message.fail {
   color: var(--red);
+}
+
+@keyframes buttonPulse {
+  from {
+    transform: translateY(0);
+    opacity: 0.55;
+  }
+
+  to {
+    transform: translateY(-1px);
+    opacity: 1;
+  }
 }
 
 .tutor-panel {
