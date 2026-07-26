@@ -25,7 +25,7 @@ Last updated: 2026-07-26
 - Account system: enabled. The app opens with registration/login before AI Tutor can be used.
 - Tutor style binding: enabled. Each account is permanently bound to one Tutor style at registration, or at the next login for older unbound accounts.
 - Structured activity logging: enabled for Run, Submit, and AI Tutor chat events.
-- Activity dashboard: account-scoped login page with summary cards, a shared scroll area containing the accuracy-over-interactions line chart and a staggered vertical timeline.
+- Activity dashboard: account-scoped login page with summary cards, a shared scroll area containing the accuracy-over-interactions line chart and an auto-expanding staggered vertical timeline.
 - Activity dashboard compatibility: legacy Tutor chat history is merged into the structured activity feed.
 - Admin account console: root-authenticated page for viewing all accounts, password storage status, account summaries, and short-lived dashboard links for each user.
 - Tutor prompts: Encouraging Tutor v3 and Neutral Tutor v3. Both refuse code/final-answer requests and avoid exact testcase/code leakage. Encouraging Tutor uses supportive wording; Neutral Tutor uses plain, non-motivational wording.
