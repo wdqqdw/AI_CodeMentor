@@ -61,6 +61,10 @@ ALLOWED_ORIGINS = {
 }
 REQUIRE_BROWSER_ORIGIN = os.getenv("REQUIRE_BROWSER_ORIGIN", "true").lower() not in {"0", "false", "no"}
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")
+ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "root")
+ADMIN_PASSWORD_HASH = os.getenv("ADMIN_PASSWORD_HASH", "")
+ADMIN_SESSION_TTL_SECONDS = int(os.getenv("ADMIN_SESSION_TTL_SECONDS", str(60 * 60 * 12)))
+IMPERSONATION_SESSION_TTL_SECONDS = int(os.getenv("IMPERSONATION_SESSION_TTL_SECONDS", str(60 * 30)))
 RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("RATE_LIMIT_WINDOW_SECONDS", "60"))
 RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "20"))
 SESSION_TTL_SECONDS = int(os.getenv("SESSION_TTL_SECONDS", str(60 * 60 * 24 * 30)))
@@ -87,6 +91,7 @@ HISTORY_PATH = HISTORY_DIR / "tutor_history.jsonl"
 PRIVATE_DATA_DIR = Path(os.getenv("CODEMENTOR_DATA_DIR", str(BACKEND_DIR / "private_data")))
 USERS_PATH = PRIVATE_DATA_DIR / "users.json"
 SESSIONS_PATH = PRIVATE_DATA_DIR / "sessions.json"
+ADMIN_SESSIONS_PATH = PRIVATE_DATA_DIR / "admin_sessions.json"
 USER_HISTORY_DIR = PRIVATE_DATA_DIR / "histories"
 USER_ACTIVITY_DIR = PRIVATE_DATA_DIR / "activities"
 ACCOUNT_SUMMARY_CSV_PATH = PRIVATE_DATA_DIR / "account_summary.csv"
@@ -317,6 +322,68 @@ def verify_password(password: str, password_hash: str) -> bool:
         return False
 
 
+def password_hash_preview(password_hash: Any) -> str:
+    text = str(password_hash or "")
+    if not text:
+        return "missing"
+
+    parts = text.split("$")
+    if len(parts) == 4:
+        return f"{parts[0]}${parts[1]}$...{parts[3][-10:]}"
+    if len(text) <= 28:
+        return text
+    return f"{text[:18]}...{text[-8:]}"
+
+
+def admin_password_is_configured() -> bool:
+    return bool(ADMIN_PASSWORD_HASH.strip())
+
+
+def create_admin_session() -> dict[str, Any]:
+    token = token_urlsafe(36)
+    session = {
+        "token": token,
+        "username": ADMIN_USERNAME,
+        "created_at": now_iso(),
+        "expires_at": time.time() + ADMIN_SESSION_TTL_SECONDS,
+    }
+
+    with DATA_LOCK:
+        store = read_json_file(ADMIN_SESSIONS_PATH, {"sessions": {}})
+        sessions = store.setdefault("sessions", {})
+        sessions[token] = session
+        write_json_file(ADMIN_SESSIONS_PATH, store)
+
+    return session
+
+
+def admin_session_for_token(token: str) -> dict[str, Any] | None:
+    if not token:
+        return None
+
+    with DATA_LOCK:
+        store = read_json_file(ADMIN_SESSIONS_PATH, {"sessions": {}})
+        sessions = store.setdefault("sessions", {})
+        session = sessions.get(token)
+        if not session:
+            return None
+
+        if float(session.get("expires_at", 0)) < time.time():
+            sessions.pop(token, None)
+            write_json_file(ADMIN_SESSIONS_PATH, store)
+            return None
+
+        return {"token": token, "session": session}
+
+
+def delete_admin_session(token: str) -> None:
+    with DATA_LOCK:
+        store = read_json_file(ADMIN_SESSIONS_PATH, {"sessions": {}})
+        if token in store.get("sessions", {}):
+            store["sessions"].pop(token, None)
+            write_json_file(ADMIN_SESSIONS_PATH, store)
+
+
 def create_user(username: str, password: str, tutor_mode: Any = DEFAULT_TUTOR_MODE) -> dict[str, Any]:
     clean_username, clean_password = validate_credentials(username, password)
     username_key = normalize_username(clean_username)
@@ -380,14 +447,20 @@ def ensure_user_tutor_mode(user: dict[str, Any], fallback: Any = DEFAULT_TUTOR_M
     return user
 
 
-def create_session(user: dict[str, Any]) -> dict[str, Any]:
+def create_session(
+    user: dict[str, Any],
+    ttl_seconds: int | None = None,
+    session_type: str = "user",
+) -> dict[str, Any]:
     token = token_urlsafe(32)
+    ttl = SESSION_TTL_SECONDS if ttl_seconds is None else ttl_seconds
     session = {
         "token": token,
         "user_id": user["id"],
         "username": user["username"],
         "created_at": now_iso(),
-        "expires_at": time.time() + SESSION_TTL_SECONDS,
+        "expires_at": time.time() + ttl,
+        "session_type": session_type,
     }
 
     with DATA_LOCK:
@@ -413,6 +486,11 @@ def find_user_by_id(user_id: str) -> dict[str, Any] | None:
         if user.get("id") == user_id:
             return user
     return None
+
+
+def find_user_by_username(username: str) -> dict[str, Any] | None:
+    users = read_json_file(USERS_PATH, {"users": {}}).get("users", {})
+    return users.get(normalize_username(username))
 
 
 def session_for_token(token: str) -> dict[str, Any] | None:
@@ -640,6 +718,59 @@ def read_user_activity(user_id: str, limit: int = HISTORY_CHAR_LIMIT) -> list[di
 
     limited.reverse()
     return limited
+
+
+def summarize_user_account(user: dict[str, Any]) -> dict[str, Any]:
+    user_id = str(user.get("id", ""))
+    entries = read_user_activity(user_id, limit=500000) if user_id else []
+    event_counts: defaultdict[str, int] = defaultdict(int)
+    best_passed = 0
+    best_total = 0
+    latest_problem = ""
+    first_activity_at = ""
+    last_activity_at = ""
+
+    for entry in entries:
+        event_type = str(entry.get("event_type", "activity") or "activity")
+        event_counts[event_type] += 1
+
+        created_at = str(entry.get("created_at", ""))
+        if created_at and (not first_activity_at or created_at < first_activity_at):
+            first_activity_at = created_at
+        if created_at and created_at >= last_activity_at:
+            last_activity_at = created_at
+            problem = entry.get("problem") if isinstance(entry.get("problem"), dict) else {}
+            latest_problem = str(problem.get("englishName") or problem.get("id") or "")
+
+        passed, total = activity_score(entry)
+        if total and (best_total == 0 or passed / total > best_passed / best_total):
+            best_passed = passed
+            best_total = total
+
+    best_percent = round(best_passed / best_total * 100, 1) if best_total else None
+    mode = tutor_mode_for_user(user)
+    return {
+        "user_id": user_id,
+        "username": user.get("username", ""),
+        "created_at": user.get("created_at", ""),
+        "last_login_at": user.get("last_login_at", ""),
+        "first_activity_at": first_activity_at,
+        "last_activity_at": last_activity_at,
+        "tutor_mode": mode,
+        "tutor_mode_label": tutor_mode_label(mode),
+        "total_events": len(entries),
+        "run_count": event_counts.get("run", 0),
+        "submit_count": event_counts.get("submit", 0),
+        "chat_count": event_counts.get("chat", 0),
+        "chat_error_count": event_counts.get("chat_error", 0),
+        "best_passed": best_passed if best_total else None,
+        "best_total": best_total if best_total else None,
+        "best_percent": best_percent,
+        "latest_problem": latest_problem,
+        "password_storage": "pbkdf2_sha256_hash_only",
+        "password_hash_preview": password_hash_preview(user.get("password_hash")),
+        "password_note": "Plaintext passwords are not stored. Existing passwords are irreversible hashes.",
+    }
 
 
 def trim_text(value: Any, limit: int = 20000) -> str:
@@ -917,6 +1048,20 @@ class TutorHandler(BaseHTTPRequestHandler):
         token = self.headers.get("X-Admin-Token", "")
         return bool(ADMIN_TOKEN) and compare_digest(token, ADMIN_TOKEN)
 
+    def admin_context(self) -> dict[str, Any] | None:
+        authorization = self.headers.get("Authorization", "")
+        scheme, _, token = authorization.partition(" ")
+        if scheme.lower() != "bearer" or not token:
+            self.send_json(HTTPStatus.UNAUTHORIZED, {"error": "Root login required."})
+            return None
+
+        context = admin_session_for_token(token.strip())
+        if not context:
+            self.send_json(HTTPStatus.UNAUTHORIZED, {"error": "Admin session expired. Please log in again."})
+            return None
+
+        return context
+
     def auth_context(self) -> dict[str, Any] | None:
         authorization = self.headers.get("Authorization", "")
         scheme, _, token = authorization.partition(" ")
@@ -983,6 +1128,31 @@ class TutorHandler(BaseHTTPRequestHandler):
         except ValueError as error:
             self.send_json(HTTPStatus.BAD_REQUEST, {"error": str(error)})
 
+    def handle_admin_login(self) -> None:
+        if not self.request_has_allowed_origin() or not self.enforce_rate_limit("admin-auth"):
+            return
+
+        if not admin_password_is_configured():
+            self.send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "Admin password hash is not configured."})
+            return
+
+        payload = self.read_json_body()
+        username = str(payload.get("username", "")).strip()
+        password = str(payload.get("password", ""))
+        if not compare_digest(username, ADMIN_USERNAME) or not verify_password(password, ADMIN_PASSWORD_HASH):
+            self.send_json(HTTPStatus.UNAUTHORIZED, {"error": "Invalid root username or password."})
+            return
+
+        session = create_admin_session()
+        self.send_json(
+            HTTPStatus.OK,
+            {
+                "token": session["token"],
+                "admin": {"username": ADMIN_USERNAME},
+                "expires_at": session["expires_at"],
+            },
+        )
+
     def do_GET(self) -> None:
         path = urlparse(self.path).path
         if path == "/health":
@@ -994,6 +1164,7 @@ class TutorHandler(BaseHTTPRequestHandler):
                     "history_char_limit": HISTORY_CHAR_LIMIT,
                     "auth": True,
                     "activity": True,
+                    "admin_auth": admin_password_is_configured(),
                 },
             )
             return
@@ -1024,6 +1195,28 @@ class TutorHandler(BaseHTTPRequestHandler):
             if not context:
                 return
             self.send_json(HTTPStatus.OK, {"user": public_user(context["user"])})
+            return
+
+        if path == "/api/admin/accounts":
+            if not self.request_has_allowed_origin():
+                return
+            if not self.admin_context():
+                return
+
+            refresh_account_summary_csv()
+            users = read_json_file(USERS_PATH, {"users": {}}).get("users", {})
+            accounts = [
+                summarize_user_account(user)
+                for user in sorted(users.values(), key=lambda item: str(item.get("username", "")).lower())
+            ]
+            self.send_json(
+                HTTPStatus.OK,
+                {
+                    "accounts": accounts,
+                    "count": len(accounts),
+                    "generated_at": now_iso(),
+                },
+            )
             return
 
         if path == "/api/my-history":
@@ -1087,6 +1280,13 @@ class TutorHandler(BaseHTTPRequestHandler):
                 self.send_json(HTTPStatus.BAD_REQUEST, {"error": str(error)})
             return
 
+        if path == "/api/admin/login":
+            try:
+                self.handle_admin_login()
+            except ValueError as error:
+                self.send_json(HTTPStatus.BAD_REQUEST, {"error": str(error)})
+            return
+
         if path == "/api/logout":
             if not self.request_has_allowed_origin():
                 return
@@ -1095,6 +1295,56 @@ class TutorHandler(BaseHTTPRequestHandler):
                 return
             delete_session(context["token"])
             self.send_json(HTTPStatus.OK, {"ok": True})
+            return
+
+        if path == "/api/admin/logout":
+            if not self.request_has_allowed_origin():
+                return
+            context = self.admin_context()
+            if not context:
+                return
+            delete_admin_session(context["token"])
+            self.send_json(HTTPStatus.OK, {"ok": True})
+            return
+
+        if path == "/api/admin/impersonate":
+            if not self.request_has_allowed_origin():
+                return
+            if not self.admin_context():
+                return
+            if not self.enforce_rate_limit("admin-impersonate"):
+                return
+
+            try:
+                payload = self.read_json_body()
+                user = None
+                user_id = str(payload.get("user_id") or payload.get("userId") or "").strip()
+                username = str(payload.get("username") or "").strip()
+                if user_id:
+                    user = find_user_by_id(user_id)
+                elif username:
+                    user = find_user_by_username(username)
+
+                if not user:
+                    self.send_json(HTTPStatus.NOT_FOUND, {"error": "User not found."})
+                    return
+
+                session = create_session(
+                    user,
+                    ttl_seconds=IMPERSONATION_SESSION_TTL_SECONDS,
+                    session_type="admin_impersonation",
+                )
+                self.send_json(
+                    HTTPStatus.OK,
+                    {
+                        "token": session["token"],
+                        "user": public_user(user),
+                        "expires_at": session["expires_at"],
+                        "expires_in": IMPERSONATION_SESSION_TTL_SECONDS,
+                    },
+                )
+            except ValueError as error:
+                self.send_json(HTTPStatus.BAD_REQUEST, {"error": str(error)})
             return
 
         if path == "/api/activity":

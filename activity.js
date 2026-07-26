@@ -51,6 +51,18 @@ const loadStoredAuthSession = () => {
   }
 };
 
+const consumeAuthSessionFromUrl = () => {
+  const hash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : "";
+  const params = new URLSearchParams(hash);
+  const token = params.get("session") || params.get("token");
+  if (!token) {
+    return null;
+  }
+
+  window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+  return { token };
+};
+
 const saveAuthSession = (session) => {
   authSession = session;
   window.localStorage.setItem(authStorageKey, JSON.stringify(session));
@@ -401,7 +413,7 @@ const loadActivity = async () => {
 };
 
 const verifyStoredSession = async () => {
-  authSession = loadStoredAuthSession();
+  authSession = consumeAuthSessionFromUrl() || loadStoredAuthSession();
   if (!authSession?.token) {
     showLogin();
     return;

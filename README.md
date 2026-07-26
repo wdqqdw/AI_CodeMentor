@@ -8,6 +8,7 @@ Last updated: 2026-07-26
 
 - <a href="https://wdqqdw.github.io/AI_CodeMentor/" target="_blank" rel="noopener noreferrer">Live app</a>
 - <a href="https://wdqqdw.github.io/AI_CodeMentor/activity.html" target="_blank" rel="noopener noreferrer">Structured activity dashboard</a>
+- <a href="https://wdqqdw.github.io/AI_CodeMentor/admin.html" target="_blank" rel="noopener noreferrer">Admin account console</a>
 - <a href="https://wdqqdw.github.io/AI_CodeMentor/backend-chat.html" target="_blank" rel="noopener noreferrer">Backend debug page</a>
 - <a href="https://github.com/wdqqdw/AI_CodeMentor" target="_blank" rel="noopener noreferrer">GitHub repository</a>
 - <a href="https://frequent-reflection-combinations-raises.trycloudflare.com/health" target="_blank" rel="noopener noreferrer">Current public backend health check</a>
@@ -26,6 +27,7 @@ Last updated: 2026-07-26
 - Structured activity logging: enabled for Run, Submit, and AI Tutor chat events.
 - Activity dashboard: account-scoped login page with summary cards, a shared scroll area containing the accuracy-over-interactions line chart and a staggered vertical timeline.
 - Activity dashboard compatibility: legacy Tutor chat history is merged into the structured activity feed.
+- Admin account console: root-authenticated page for viewing all accounts, password storage status, account summaries, and short-lived dashboard links for each user.
 - Tutor prompts: Encouraging Tutor v3 and Neutral Tutor v3. Both refuse code/final-answer requests and avoid exact testcase/code leakage. Encouraging Tutor uses supportive wording; Neutral Tutor uses plain, non-motivational wording.
 - Boggle Solver testcases: 100 cases grouped into 8 learning tiers, with non-spoiling hints for the first 90 cases and fully hidden challenge cases for the final 10.
 - Private account summary CSV: enabled on the backend. The server maintains `account_summary.csv` inside the private backend data directory with usernames, bound Tutor style, password hashes, activity counts, best score, latest problem, and timestamps.
@@ -36,7 +38,8 @@ Last updated: 2026-07-26
 - API keys, admin tokens, `.env.local`, backend logs, private account files, password hashes, sessions, and private chat history must stay outside this public repository.
 - Usernames, password hashes, login sessions, and per-account Tutor history are stored on the AutoDL server under the private backend data directory.
 - Per-account structured records are also stored privately, including code snapshots, problem metadata, test pass rates, visible testcase results, hidden testcase summaries, and Tutor message/reply snapshots.
-- The account summary CSV stores password hashes only, not plaintext passwords. Keep the entire private data directory off GitHub.
+- The account summary CSV and admin console store/show password hash status only, not plaintext passwords. Existing user passwords are irreversible hashes; keep the entire private data directory off GitHub.
+- Root admin credentials are configured only in private AutoDL environment files through `ADMIN_USERNAME` and `ADMIN_PASSWORD_HASH`.
 - The backend debug page is for testing and inspection. Protected backend endpoints may require private credentials that should not be committed here.
 - If the AutoDL instance is stopped, restarted, out of balance, or reclaimed by the platform, the AI Tutor backend will be unavailable until the backend service and tunnel are launched again.
 
@@ -51,6 +54,7 @@ Last updated: 2026-07-26
 - `backend/prompts/baselines`, `backend/prompts/variants`, `backend/prompts/evaluations`: prompt versioning, baseline backups, and synthetic evaluation notes.
 - `backend-chat.html`, `backend-chat.css`, `backend-chat.js`: backend debug page.
 - `activity.html`, `activity.css`, `activity.js`: account-scoped structured activity dashboard.
+- `admin.html`, `admin.css`, `admin.js`: root-authenticated account overview and dashboard jump page.
 
 ## Backend Account API
 
@@ -62,6 +66,10 @@ Last updated: 2026-07-26
 - `POST /api/activity`: record a structured Run/Submit learning event.
 - `GET /api/my-activity`: read the current account's structured activity records.
 - `POST /api/tutor`: call the AI Tutor. This endpoint requires `Authorization: Bearer <session-token>`.
+- `POST /api/admin/login`: create a root admin session. Uses the private `ADMIN_PASSWORD_HASH`, not a public plaintext password.
+- `GET /api/admin/accounts`: list all account summaries for the admin console.
+- `POST /api/admin/impersonate`: create a short-lived account dashboard session for a selected user.
+- `POST /api/admin/logout`: invalidate the current admin session.
 
 ## Maintenance Checklist
 
@@ -74,5 +82,6 @@ When making future changes, update this README in the same GitHub sync if any of
 - Debug/testing page path.
 - Account/authentication behavior.
 - Structured activity logging fields or dashboard path.
+- Admin console path, root auth behavior, or dashboard impersonation behavior.
 - Private account summary CSV fields or storage location.
 - Any user-facing operational instruction.

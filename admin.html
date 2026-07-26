@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CodeMentor AI Admin</title>
+    <link rel="stylesheet" href="./admin.css?v=admin-console-1" />
+  </head>
+  <body>
+    <main class="admin-app">
+      <header class="admin-header">
+        <a class="brand" href="./index.html" aria-label="Back to CodeMentor AI">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 64 64" role="img">
+              <path d="M32 3 58 18v28L32 61 6 46V18L32 3Z" />
+              <path d="M32 11 50.5 21.7v20.6L32 53 13.5 42.3V21.7L32 11Z" />
+              <path d="M25.2 23.4 17.8 31l7.4 7.6M38.8 23.4 46.2 31l-7.4 7.6M35.5 18.9 28.5 43.1" />
+            </svg>
+          </span>
+          <span>CodeMentor <strong>AI</strong></span>
+        </a>
+        <div class="header-actions">
+          <p id="admin-status">Root login required</p>
+          <button id="refresh-button" type="button" hidden>Refresh</button>
+          <button id="logout-button" type="button" hidden>Log out</button>
+        </div>
+      </header>
+
+      <section class="login-panel" id="login-panel">
+        <div>
+          <span>Admin Console</span>
+          <h1>Account Overview</h1>
+          <p>Log in with the private root account to view all learners and open account-scoped dashboards.</p>
+        </div>
+        <form id="login-form" class="login-form">
+          <label for="admin-username">Root username</label>
+          <input id="admin-username" autocomplete="username" required />
+          <label for="admin-password">Root password</label>
+          <input id="admin-password" type="password" autocomplete="current-password" required />
+          <button type="submit">Log in</button>
+          <p id="login-message" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section class="admin-console" id="admin-console" hidden>
+        <section class="console-intro">
+          <div>
+            <span>Root Console</span>
+            <h1>All Accounts</h1>
+            <p>Passwords are stored as irreversible hashes. This page shows password storage status, not plaintext.</p>
+          </div>
+          <a class="secondary-link" href="./activity.html" target="_blank" rel="noopener noreferrer">Open dashboard login</a>
+        </section>
+
+        <section class="metric-grid" id="metric-grid" aria-label="Admin summary"></section>
+
+        <section class="accounts-panel">
+          <div class="panel-heading">
+            <div>
+              <span>Accounts</span>
+              <h2>Learner records</h2>
+            </div>
+            <p id="generated-at">-</p>
+          </div>
+          <div class="accounts-scroll" id="account-list" aria-live="polite"></div>
+        </section>
+      </section>
+    </main>
+
+    <script>
+      window.CODEMENTOR_CONFIG = {
+        backendBaseUrl: "https://frequent-reflection-combinations-raises.trycloudflare.com",
+      };
+    </script>
+    <script src="./admin.js?v=admin-console-1"></script>
+  </body>
+</html>
