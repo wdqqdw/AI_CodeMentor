@@ -405,12 +405,13 @@ svg {
 
 .timeline-panel {
   display: flow-root;
-  height: auto;
+  min-height: max-content;
+  height: max-content;
   overflow: visible;
 }
 
 .activity-timeline {
-  min-height: 0;
+  min-height: max-content;
   position: relative;
   display: flex;
   flex-direction: column;
