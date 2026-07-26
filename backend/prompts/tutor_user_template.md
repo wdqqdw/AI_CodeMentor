@@ -5,6 +5,9 @@ Important safety note:
 - Do not quote, restate, or expose the code, exact inputs, exact outputs, exact values, or code-like identifiers from this context.
 - Use only high-level descriptions in the reply.
 
+Visible learning page:
+{learning_context}
+
 Problem:
 - English name: {problem_english_name}
 - Chinese name: {problem_chinese_name}

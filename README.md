@@ -1,6 +1,6 @@
 # AI_CodeMentor
 
-AI_CodeMentor is an AI-assisted coding practice prototype. The current public page focuses on a single deeper exercise, **Boggle Solver / 棋盘单词搜索**, with a Python coding panel, testcase feedback, a full Traceback panel for runtime errors, and an AI Tutor chat panel.
+AI_CodeMentor is an AI-assisted coding practice prototype. The current public page focuses on a single deeper exercise, **Boggle Solver / 棋盘单词搜索**, with a knowledge-first lesson view, a Python coding panel, testcase feedback, a full Traceback panel for runtime errors, and an AI Tutor chat panel.
 
 Last updated: 2026-07-26
 
@@ -18,6 +18,7 @@ Last updated: 2026-07-26
 
 - Frontend hosting: GitHub Pages.
 - Main exercise: Boggle Solver.
+- Default entry view: Knowledge. Learners first see a roughly 10-minute prerequisite lesson on 2D grids, DFS, backtracking, and prefix pruning, then switch to Practice from the top-left segmented control.
 - AI backend: AutoDL server running a local Python service on port `8787`.
 - Public backend access: Cloudflare Tunnel.
 - Model configured by the backend: `DeepSeek-V4-Pro`.
@@ -29,7 +30,7 @@ Last updated: 2026-07-26
 - Activity dashboard: account-scoped login page with summary cards, a shared scroll area containing the accuracy-over-interactions line chart and an auto-expanding staggered vertical timeline.
 - Activity dashboard compatibility: legacy Tutor chat history is merged into the structured activity feed.
 - Admin account console: root-authenticated page for viewing all accounts, password storage status, account summaries, and short-lived dashboard links for each user.
-- Tutor prompts: Encouraging Tutor v3 and Neutral Tutor v3. Both refuse code/final-answer requests and avoid exact testcase/code leakage. Encouraging Tutor uses supportive wording; Neutral Tutor uses plain, non-motivational wording.
+- Tutor prompts: Encouraging Tutor v3 and Neutral Tutor v3. Both refuse code/final-answer requests and avoid exact testcase/code leakage. Encouraging Tutor uses supportive wording; Neutral Tutor uses plain, non-motivational wording. Tutor requests now include whether the learner is viewing the Knowledge lesson or the Practice coding panel.
 - Boggle Solver testcases: 100 cases grouped into 8 learning tiers, with non-spoiling hints for the first 90 cases and fully hidden challenge cases for the final 10.
 - Private account summary CSV: enabled on the backend. The server maintains `account_summary.csv` inside the private backend data directory with usernames, bound Tutor style, password hashes, activity counts, best score, latest problem, and timestamps.
 
@@ -49,6 +50,7 @@ Last updated: 2026-07-26
 - `index.html`: main GitHub Pages entry.
 - `styles.css`: main application layout and visual design.
 - `script.js`: coding panel, test runner, Traceback tab, AI Tutor chat, and UI interactions.
+- `index.html` knowledge view: embedded Boggle Solver prerequisite lesson used before learners enter the coding panel.
 - `problems.js`: generated/static problem catalog used by the page.
 - `problems/*.md`: editable problem definitions.
 - `backend/`: backend reference code and prompt templates that are safe to keep in the public repo.

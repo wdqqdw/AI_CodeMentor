@@ -47,6 +47,7 @@ const accountStatus = document.querySelector("#account-status");
 const accountName = document.querySelector("#account-name");
 const accountTutorMode = document.querySelector("#account-tutor-mode");
 const logoutButton = document.querySelector("#logout-button");
+const modeSwitchButtons = document.querySelectorAll("[data-left-view]");
 
 const tutorApiUrl = window.CODEMENTOR_CONFIG?.tutorApiUrl || "http://127.0.0.1:8787/api/tutor";
 const backendBaseUrl =
@@ -80,6 +81,7 @@ let authMode = "register";
 let authSession = null;
 let activeProblemPath = problemStore.markdownProblemPath || "";
 let expandedCatalogCategory = "";
+let leftView = "lesson";
 const difficultyRank = { easy: 0, medium: 1, hard: 2 };
 
 const nowLabel = () =>
@@ -127,6 +129,30 @@ const setActiveEditorTab = (view) => {
   testcasesPanel.hidden = nextView !== "testcases";
   tracebackPanel.hidden = nextView !== "traceback";
   window.requestAnimationFrame(syncEditor);
+};
+
+const setLeftView = (view) => {
+  const nextView = view === "practice" ? "practice" : "lesson";
+  leftView = nextView;
+
+  if (nextView === "lesson") {
+    problemPanel.classList.remove("code-expanded");
+    expandEditorButton.setAttribute("aria-pressed", "false");
+    expandEditorButton.setAttribute("aria-label", "Expand code editor");
+    expandEditorButton.setAttribute("title", "Expand editor");
+  }
+
+  problemPanel.classList.toggle("lesson-mode", nextView === "lesson");
+  problemPanel.classList.toggle("practice-mode", nextView === "practice");
+  modeSwitchButtons.forEach((button) => {
+    const isActive = button.dataset.leftView === nextView;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-selected", String(isActive));
+  });
+
+  if (nextView === "practice") {
+    window.requestAnimationFrame(syncEditor);
+  }
 };
 
 const setTraceback = (text = "", summary = "No traceback", state = "") => {
@@ -1198,6 +1224,14 @@ const buildTestStateContext = () => {
 
 const buildTutorPayload = (message) => ({
   message,
+  learning: {
+    view: leftView,
+    title: leftView === "lesson" ? "Boggle Solver prerequisite lesson" : "Boggle Solver coding practice",
+    topics:
+      leftView === "lesson"
+        ? ["2D grid coordinates", "8-direction movement", "DFS", "backtracking", "prefix pruning"]
+        : ["implementation", "test feedback", "traceback debugging"],
+  },
   problem: buildProblemContext(),
   code: {
     language: languageSelect.value,
@@ -1345,6 +1379,12 @@ bookmarkButton.addEventListener("click", () => {
 tabButtons.forEach((button) => {
   button.addEventListener("click", () => {
     setActiveEditorTab(button.dataset.viewTab);
+  });
+});
+
+modeSwitchButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    setLeftView(button.dataset.leftView);
   });
 });
 
@@ -1768,6 +1808,7 @@ const initializeApp = async () => {
   hydrateInitialTutorMessage();
   renderProblem();
   renderTestcases();
+  setLeftView("lesson");
   setStatus("Ready");
   syncEditor();
   await verifyStoredSession();

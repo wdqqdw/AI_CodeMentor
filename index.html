@@ -4,20 +4,26 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CodeMentor AI</title>
-    <link rel="stylesheet" href="./styles.css?v=traceback-1" />
+    <link rel="stylesheet" href="./styles.css?v=lesson-1" />
   </head>
   <body>
     <div class="app-shell">
       <header class="topbar" aria-label="Primary navigation">
-        <div class="brand" aria-label="CodeMentor AI home">
-          <span class="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 64 64" role="img">
-              <path d="M32 3 58 18v28L32 61 6 46V18L32 3Z" />
-              <path d="M32 11 50.5 21.7v20.6L32 53 13.5 42.3V21.7L32 11Z" />
-              <path d="M25.2 23.4 17.8 31l7.4 7.6M38.8 23.4 46.2 31l-7.4 7.6M35.5 18.9 28.5 43.1" />
-            </svg>
-          </span>
-          <span class="brand-name">CodeMentor <strong>AI</strong></span>
+        <div class="brand-cluster">
+          <div class="brand" aria-label="CodeMentor AI home">
+            <span class="brand-mark" aria-hidden="true">
+              <svg viewBox="0 0 64 64" role="img">
+                <path d="M32 3 58 18v28L32 61 6 46V18L32 3Z" />
+                <path d="M32 11 50.5 21.7v20.6L32 53 13.5 42.3V21.7L32 11Z" />
+                <path d="M25.2 23.4 17.8 31l7.4 7.6M38.8 23.4 46.2 31l-7.4 7.6M35.5 18.9 28.5 43.1" />
+              </svg>
+            </span>
+            <span class="brand-name">CodeMentor <strong>AI</strong></span>
+          </div>
+          <div class="mode-switch" role="tablist" aria-label="Study view">
+            <button class="active" type="button" role="tab" aria-selected="true" data-left-view="lesson">Knowledge</button>
+            <button type="button" role="tab" aria-selected="false" data-left-view="practice">Practice</button>
+          </div>
         </div>
 
         <div class="account-status" id="account-status" hidden>
@@ -29,7 +35,197 @@
       </header>
 
       <main class="practice-layout">
-        <section class="problem-panel" aria-labelledby="problem-title">
+        <section class="problem-panel lesson-mode" aria-labelledby="problem-title">
+          <section class="lesson-pane" id="lesson-pane" aria-labelledby="lesson-title">
+            <div class="lesson-hero">
+              <span class="lesson-kicker">Knowledge First · about 10 minutes</span>
+              <h1 id="lesson-title">Boggle Solver 预备知识</h1>
+              <p>
+                这页用于做题前快速建立共同语言。你会先理解二维棋盘、相邻格移动、DFS、回溯和前缀剪枝，
+                再进入 Practice 页面写自己的解法。
+              </p>
+            </div>
+
+            <section class="lesson-section">
+              <div class="lesson-section-heading">
+                <span>1</span>
+                <div>
+                  <h2>题目要解决什么</h2>
+                  <p>
+                    Boggle Solver 给你一个小写字母棋盘和一个候选单词列表。你要返回所有能在棋盘上“走出来”的候选单词。
+                    每个单词可以从任意格子开始，每一步走到当前格子的 8 个邻居之一：上、下、左、右和四个对角线。
+                  </p>
+                </div>
+              </div>
+              <div class="lesson-rule-grid">
+                <article>
+                  <strong>路径规则</strong>
+                  <p>同一个单词的一条路径里，同一个棋盘格最多用一次。换一个单词时，所有格子重新可用。</p>
+                </article>
+                <article>
+                  <strong>输出规则</strong>
+                  <p>每个找到的字典词只返回一次。输出顺序不重要，不需要返回路径坐标。</p>
+                </article>
+                <article>
+                  <strong>本题深度</strong>
+                  <p>小数据可以逐词搜索；更强的做法会用前缀信息提前停止无意义搜索。</p>
+                </article>
+              </div>
+            </section>
+
+            <section class="lesson-section lesson-visual-pair">
+              <article class="lesson-visual-card">
+                <div>
+                  <h2>二维棋盘与 8 个方向</h2>
+                  <p>
+                    棋盘里的每个格子都可以用行号和列号定位。站在中心格时，下一步可能落在周围八个位置。
+                    写程序时，最常见的第一步是把“方向”整理成一组固定的行列变化。
+                  </p>
+                </div>
+                <div class="neighbor-grid" aria-label="Eight neighboring cells">
+                  <span>NW</span><span>N</span><span>NE</span>
+                  <span>W</span><strong>cell</strong><span>E</span>
+                  <span>SW</span><span>S</span><span>SE</span>
+                </div>
+              </article>
+
+              <article class="lesson-visual-card">
+                <div>
+                  <h2>一条词路径怎样形成</h2>
+                  <p>
+                    搜索一个词时，你可以把它想象成“当前走到第几个字母”。如果当前格字符匹配，就继续走下一个邻居；
+                    如果走不通，就退回上一步尝试别的方向。
+                  </p>
+                </div>
+                <div class="path-demo" aria-label="Example path">
+                  <div class="mini-board">
+                    <span class="path-cell">S</span><span class="path-cell">E</span><span>T</span><span>P</span>
+                    <span>A</span><span>L</span><span class="path-cell">A</span><span class="path-cell">R</span>
+                    <span>T</span><span>N</span><span>H</span><span class="path-cell">C</span>
+                    <span>O</span><span>D</span><span>E</span><span class="path-cell">H</span>
+                  </div>
+                  <div class="path-caption">
+                    <strong>目标词示意</strong>
+                    <span>S → E → A → R → C → H</span>
+                    <p>路径可以拐弯，也可以走对角线。</p>
+                  </div>
+                </div>
+              </article>
+            </section>
+
+            <section class="lesson-section">
+              <div class="lesson-section-heading">
+                <span>2</span>
+                <div>
+                  <h2>DFS：沿着一条路先走到底</h2>
+                  <p>
+                    深度优先搜索的核心是“先把当前选择继续探索下去”。在这道题里，当前状态通常包含：
+                    你站在哪个格子、当前单词匹配到哪个位置、哪些格子已经在这条路径里用过。
+                  </p>
+                </div>
+              </div>
+              <ol class="lesson-steps">
+                <li><strong>选择起点：</strong>一个单词可能从棋盘上任何格子开始。</li>
+                <li><strong>检查匹配：</strong>当前格子的字母必须对应当前要找的字母。</li>
+                <li><strong>继续深入：</strong>如果还没完成这个词，就去 8 个邻居里尝试下一步。</li>
+                <li><strong>判断成功：</strong>当所有字母都按规则匹配完，就找到了这个词。</li>
+              </ol>
+            </section>
+
+            <section class="lesson-section">
+              <div class="lesson-section-heading">
+                <span>3</span>
+                <div>
+                  <h2>回溯：走错了要恢复现场</h2>
+                  <p>
+                    回溯不是新的搜索算法，而是 DFS 里非常重要的“恢复动作”。你进入一个格子时要把它标记为已使用；
+                    当这条分支探索结束，不管成功还是失败，都要把这个标记撤销，让其他路径还能使用它。
+                  </p>
+                </div>
+              </div>
+              <div class="backtrack-strip">
+                <span>选择一个格子</span>
+                <span>标记为已使用</span>
+                <span>探索邻居</span>
+                <span>撤销标记</span>
+              </div>
+              <p class="lesson-note">
+                如果忘记撤销标记，后面的路径会错误地认为某些格子不可用；如果完全不做标记，又可能在同一条路径里重复使用同一个格子。
+              </p>
+            </section>
+
+            <section class="lesson-section">
+              <div class="lesson-section-heading">
+                <span>4</span>
+                <div>
+                  <h2>从逐词搜索到前缀剪枝</h2>
+                  <p>
+                    最直接的想法是：对每个候选词，都在棋盘上搜索一遍。这个方法容易理解，也适合作为第一版思路。
+                    但是当很多词共享前缀时，会反复走相同的路径，速度会变慢。
+                  </p>
+                </div>
+              </div>
+              <div class="concept-grid">
+                <article>
+                  <h3>逐词搜索</h3>
+                  <p>适合先验证 DFS 和回溯规则是否正确。缺点是重复搜索较多。</p>
+                </article>
+                <article>
+                  <h3>前缀树思路</h3>
+                  <p>把字典组织成“前缀是否存在”的结构。当前路径不可能成为任何单词时，就不用继续往下走。</p>
+                </article>
+                <article>
+                  <h3>何时需要剪枝</h3>
+                  <p>棋盘较大、单词很多、共享开头很多时，剪枝能明显减少搜索分支。</p>
+                </article>
+              </div>
+            </section>
+
+            <section class="lesson-section">
+              <div class="lesson-section-heading">
+                <span>5</span>
+                <div>
+                  <h2>做题前检查表</h2>
+                  <p>开始写代码前，先确认自己能回答这些问题。回答越清楚，后面的调试成本越低。</p>
+                </div>
+              </div>
+              <ul class="lesson-checklist">
+                <li>如何枚举棋盘上的所有起点？</li>
+                <li>如何判断一个邻居是否仍在棋盘范围内？</li>
+                <li>如何保证同一条路径不会重复使用同一格？</li>
+                <li>一次搜索结束后，如何恢复已使用标记？</li>
+                <li>如何避免同一个单词被加入结果多次？</li>
+                <li>如果当前路径已经不可能成为任何候选词，能不能提前停止？</li>
+              </ul>
+            </section>
+
+            <section class="lesson-section">
+              <div class="lesson-section-heading">
+                <span>6</span>
+                <div>
+                  <h2>常见错误</h2>
+                  <p>这道题的难点不在语法，而在状态管理。下面这些错误很适合用测试用例逐步排查。</p>
+                </div>
+              </div>
+              <div class="mistake-list">
+                <span>只检查 4 个方向，漏掉对角线</span>
+                <span>递归返回后没有恢复已访问状态</span>
+                <span>允许一条路径重复踩同一个格子</span>
+                <span>把重复找到的词加入多次</span>
+                <span>把空棋盘、单行棋盘或矩形棋盘处理错</span>
+                <span>返回了坐标、路径或布尔值，而不是单词列表</span>
+              </div>
+            </section>
+
+            <section class="lesson-section lesson-ready">
+              <h2>准备进入练习</h2>
+              <p>
+                如果你已经能用自己的话解释 DFS 为什么需要“标记”和“撤销”，就可以切换到 Practice。
+                做题时先实现一个正确但不一定最快的版本，再根据测试结果考虑前缀剪枝。
+              </p>
+            </section>
+          </section>
+
           <div class="learning-pane">
             <div class="problem-toolbar">
               <div class="topic-link static-topic" aria-label="Current topic">
@@ -285,6 +481,6 @@ class Solution:
         activityApiUrl: "https://frequent-reflection-combinations-raises.trycloudflare.com/api/activity",
       };
     </script>
-    <script src="./script.js?v=traceback-1"></script>
+    <script src="./script.js?v=lesson-1"></script>
   </body>
 </html>

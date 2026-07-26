@@ -10,6 +10,7 @@
   --red: #d93939;
   --shadow: 0 10px 28px rgba(39, 28, 74, 0.12), 0 1px 6px rgba(39, 28, 74, 0.08);
   --radius: 8px;
+  --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }
 
 * {
@@ -85,6 +86,13 @@ svg {
   gap: 10px;
 }
 
+.brand-cluster {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 18px;
+}
+
 .brand-mark {
   width: 32px;
   height: 32px;
@@ -121,6 +129,44 @@ svg {
 .brand-name strong {
   color: #9c69ff;
   font-weight: 900;
+}
+
+.mode-switch {
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  padding: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+}
+
+.mode-switch button {
+  height: 26px;
+  min-width: 84px;
+  padding: 0 12px;
+  color: rgba(255, 255, 255, 0.82);
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  font-weight: 820;
+  cursor: pointer;
+  transition:
+    color 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.mode-switch button:hover,
+.mode-switch button:focus-visible {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.mode-switch button.active {
+  color: #ffffff;
+  background: rgba(156, 105, 255, 0.42);
+  box-shadow: 0 5px 14px rgba(28, 8, 70, 0.22);
 }
 
 .account-status {
@@ -382,6 +428,277 @@ svg {
 
 .learning-pane::-webkit-scrollbar-thumb:hover {
   background: #b99cf6;
+}
+
+.lesson-pane {
+  display: none;
+  min-height: 0;
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 4px 8px 8px 2px;
+  color: #30294e;
+  scrollbar-gutter: stable;
+}
+
+.problem-panel.lesson-mode {
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.problem-panel.lesson-mode .lesson-pane {
+  display: block;
+}
+
+.problem-panel.lesson-mode .learning-pane,
+.problem-panel.lesson-mode .editor-panel,
+.problem-panel.lesson-mode .execution-row {
+  display: none;
+}
+
+.problem-panel.code-expanded .lesson-pane {
+  display: none;
+}
+
+.lesson-pane::-webkit-scrollbar {
+  width: 8px;
+}
+
+.lesson-pane::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.lesson-pane::-webkit-scrollbar-thumb {
+  background: #d8cef1;
+  border-radius: 999px;
+}
+
+.lesson-pane::-webkit-scrollbar-thumb:hover {
+  background: #b99cf6;
+}
+
+.lesson-hero {
+  padding: 8px 0 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.lesson-kicker {
+  color: var(--purple);
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.lesson-hero h1 {
+  margin: 8px 0 8px;
+  color: var(--ink);
+  font-size: 1.72rem;
+  line-height: 1.08;
+  letter-spacing: 0;
+}
+
+.lesson-hero p,
+.lesson-section p,
+.lesson-note,
+.lesson-ready p {
+  margin: 0;
+  color: #3f375d;
+  font-size: 0.88rem;
+  line-height: 1.56;
+}
+
+.lesson-section {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.lesson-section:last-child {
+  border-bottom: 0;
+}
+
+.lesson-section-heading {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.lesson-section-heading > span {
+  width: 30px;
+  height: 30px;
+  display: inline-grid;
+  place-items: center;
+  color: #ffffff;
+  background: linear-gradient(135deg, #7a32f5, #5420c4);
+  border-radius: 999px;
+  font-weight: 850;
+  box-shadow: 0 7px 18px rgba(109, 44, 240, 0.22);
+}
+
+.lesson-section h2 {
+  margin: 0 0 7px;
+  color: var(--ink);
+  font-size: 1.05rem;
+  line-height: 1.2;
+}
+
+.lesson-rule-grid,
+.concept-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 13px;
+}
+
+.lesson-rule-grid article,
+.concept-grid article,
+.lesson-visual-card,
+.lesson-ready {
+  min-width: 0;
+  background: #fbfaff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.lesson-rule-grid article,
+.concept-grid article {
+  padding: 12px;
+}
+
+.lesson-rule-grid strong,
+.concept-grid h3 {
+  display: block;
+  margin: 0 0 6px;
+  color: var(--ink);
+  font-size: 0.9rem;
+  font-weight: 850;
+}
+
+.concept-grid article:nth-child(2) {
+  background: #f8f3ff;
+  border-color: #dbc9ff;
+}
+
+.lesson-visual-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.lesson-visual-card {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+}
+
+.neighbor-grid {
+  width: min(100%, 260px);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.neighbor-grid span,
+.neighbor-grid strong,
+.mini-board span {
+  min-height: 42px;
+  display: inline-grid;
+  place-items: center;
+  color: #2b2445;
+  background: #ffffff;
+  border: 2px solid #d8ccf2;
+  border-radius: 8px;
+  font-weight: 850;
+}
+
+.neighbor-grid strong {
+  color: #ffffff;
+  background: var(--purple);
+  border-color: var(--purple);
+}
+
+.path-demo {
+  display: grid;
+  grid-template-columns: minmax(150px, 190px) minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+}
+
+.mini-board {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.mini-board .path-cell {
+  color: var(--purple);
+  background: #f4efff;
+  border-color: var(--purple);
+  box-shadow: 0 5px 12px rgba(109, 44, 240, 0.12);
+}
+
+.path-caption {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+}
+
+.path-caption strong {
+  color: var(--ink);
+  font-size: 0.85rem;
+}
+
+.path-caption span {
+  color: var(--purple);
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.lesson-steps,
+.lesson-checklist {
+  margin: 13px 0 0;
+  padding-left: 22px;
+  color: #3f375d;
+  font-size: 0.88rem;
+  line-height: 1.58;
+}
+
+.lesson-steps li + li,
+.lesson-checklist li + li {
+  margin-top: 5px;
+}
+
+.backtrack-strip,
+.mistake-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 13px;
+}
+
+.backtrack-strip span,
+.mistake-list span {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 11px;
+  color: #3a3158;
+  background: #f7f4ff;
+  border: 1px solid #dfd4f5;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 760;
+}
+
+.lesson-note {
+  margin-top: 10px;
+}
+
+.lesson-ready {
+  padding: 15px;
+  background: linear-gradient(135deg, #fbfaff, #f4efff);
+}
+
+.lesson-ready h2 {
+  margin-bottom: 7px;
 }
 
 .catalog-view[hidden] {

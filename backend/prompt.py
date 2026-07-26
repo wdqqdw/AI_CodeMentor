@@ -90,6 +90,25 @@ def _format_test_state(test_state: Any) -> str:
     )
 
 
+def _format_learning_context(learning: Any) -> str:
+    if not isinstance(learning, dict):
+        return "Current left-side view: unknown."
+
+    topics = learning.get("topics")
+    topic_lines = []
+    if isinstance(topics, list):
+        topic_lines = [f"- {_text(item)}" for item in topics[:8] if _text(item).strip()]
+
+    return "\n".join(
+        [
+            f"Current left-side view: {_text(learning.get('view'), 'unknown')}",
+            f"Visible page title: {_text(learning.get('title'), 'unknown')}",
+            "Visible learning topics:",
+            "\n".join(topic_lines) or "- No learning topics provided.",
+        ]
+    )
+
+
 def build_tutor_messages(payload: dict[str, Any], tutor_mode: str = "encouraging") -> list[dict[str, str]]:
     message = _text(payload.get("message")).strip()
     if not message:
@@ -116,6 +135,7 @@ def build_tutor_messages(payload: dict[str, Any], tutor_mode: str = "encouraging
         editor_status=editor_status,
         editor_output=editor_output or "empty",
         editor_traceback=editor_traceback or "empty",
+        learning_context=_format_learning_context(payload.get("learning")),
         test_state=_format_test_state(payload.get("testState")),
         learner_request=message,
     )
