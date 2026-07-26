@@ -959,7 +959,19 @@ svg {
   display: none;
 }
 
+.editor-panel.show-traceback .code-surface {
+  display: none;
+}
+
 .editor-panel.show-testcases .testcases-panel {
+  display: flex;
+}
+
+.editor-panel.show-traceback .testcases-panel {
+  display: none;
+}
+
+.editor-panel.show-traceback .traceback-panel {
   display: flex;
 }
 
@@ -999,6 +1011,18 @@ svg {
 .tab.active {
   color: var(--purple);
   box-shadow: inset 0 -2px 0 var(--purple);
+}
+
+.editor-panel.has-traceback .traceback-tab:not(.active) {
+  color: var(--red);
+}
+
+.editor-panel.has-traceback .traceback-tab:not(.active)::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--red);
 }
 
 .editor-tools {
@@ -1142,6 +1166,64 @@ svg {
 .test-output.fail {
   color: #a92c2c;
   background: #fff5f5;
+}
+
+.traceback-panel {
+  min-height: 0;
+  flex: 1 1 auto;
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.traceback-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  color: #312a4c;
+  background: #f8f6fd;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.traceback-summary.fail {
+  color: #8f1f1f;
+  background: #fff6f6;
+  border-color: rgba(217, 57, 57, 0.24);
+}
+
+.traceback-summary strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 0.86rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.traceback-summary span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.traceback-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0;
+  overflow: auto;
+  padding: 12px;
+  color: #34233d;
+  background: #fffafa;
+  border: 1px solid rgba(217, 57, 57, 0.22);
+  border-radius: var(--radius);
+  font: 0.74rem/1.5 "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  tab-size: 2;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .testcases-panel {

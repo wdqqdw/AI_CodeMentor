@@ -23,6 +23,7 @@ Current code:
 Editor/test status:
 - status label: {editor_status}
 - output panel: {editor_output}
+- traceback panel: {editor_traceback}
 
 Test state:
 {test_state}

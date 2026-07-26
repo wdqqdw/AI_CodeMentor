@@ -260,11 +260,28 @@ const renderCode = (entry) => {
   `;
 };
 
+const renderTraceback = (entry) => {
+  const traceback = entry.code?.traceback || entry.result?.error || "";
+  if (!traceback) {
+    return "";
+  }
+
+  return `
+    <section class="code-block traceback-snapshot">
+      <details>
+        <summary>Traceback Snapshot</summary>
+        <pre>${escapeHtml(traceback)}</pre>
+      </details>
+    </section>
+  `;
+};
+
 const renderCodeBody = (entry) => {
   const state = entry.test_state || {};
   const hidden = state.hidden || {};
   const result = entry.result || {};
-  const output = result.error || entry.code?.output || entry.code?.status || "";
+  const traceback = entry.code?.traceback || result.error || "";
+  const output = traceback ? "Runtime error captured. Open Traceback Snapshot for full details." : entry.code?.output || entry.code?.status || "";
 
   return `
     <section class="timeline-code">
@@ -279,6 +296,7 @@ const renderCodeBody = (entry) => {
       </div>
       ${output ? `<p class="code-output">${escapeHtml(truncateText(output, 420))}</p>` : ""}
       ${renderCases(entry)}
+      ${renderTraceback(entry)}
       ${renderCode(entry)}
     </section>
   `;

@@ -762,11 +762,20 @@ svg {
   background: #fbfaff;
 }
 
+.traceback-snapshot details {
+  border-color: rgba(217, 57, 57, 0.22);
+  background: #fffafa;
+}
+
 .code-block summary {
   padding: 10px 12px;
   color: var(--purple);
   font-weight: 850;
   cursor: pointer;
+}
+
+.traceback-snapshot summary {
+  color: var(--red);
 }
 
 .code-block pre {

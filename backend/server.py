@@ -800,6 +800,7 @@ def sanitize_code_state(value: Any) -> dict[str, Any]:
         "source": trim_text(code.get("source"), 30000),
         "status": trim_text(code.get("status"), 300),
         "output": trim_text(code.get("output"), 4000),
+        "traceback": trim_text(code.get("traceback"), 12000),
     }
 
 
@@ -874,7 +875,7 @@ def build_activity_entry(user: dict[str, Any], payload: dict[str, Any], event_ty
             "all_passed": bool(result.get("all_passed") or result.get("allPassed")),
             "label": trim_text(result.get("label"), 120),
             "scope": trim_text(result.get("scope"), 40),
-            "error": trim_text(result.get("error"), 2000),
+            "error": trim_text(result.get("error"), 12000),
         },
         "chat": {
             "learner_message": trim_text(chat.get("learner_message") or payload.get("message"), 6000),
@@ -905,6 +906,7 @@ def legacy_history_entry_to_activity(entry: dict[str, Any]) -> dict[str, Any]:
             "source": "",
             "status": "",
             "output": "",
+            "traceback": "",
         },
         "test_state": {
             "scope": "legacy",

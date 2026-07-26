@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CodeMentor AI</title>
-    <link rel="stylesheet" href="./styles.css?v=tutor-modes-1" />
+    <link rel="stylesheet" href="./styles.css?v=traceback-1" />
   </head>
   <body>
     <div class="app-shell">
@@ -80,6 +80,13 @@
                   </svg>
                   <span>Testcases</span>
                 </button>
+                <button class="tab traceback-tab" type="button" role="tab" aria-selected="false" data-view-tab="traceback">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 9v4M12 17h.01" />
+                    <path d="M10.3 3.9 2.6 17.2A2 2 0 0 0 4.3 20h15.4a2 2 0 0 0 1.7-2.8L13.7 3.9a2 2 0 0 0-3.4 0Z" />
+                  </svg>
+                  <span>Traceback</span>
+                </button>
               </div>
               <div class="editor-tools">
                 <label class="visually-hidden" for="language-select">Programming language</label>
@@ -136,6 +143,13 @@ class Solution:
                 <div class="hidden-testcases-title">Hidden testcases</div>
                 <div class="hidden-testcase-grid" id="hidden-testcase-grid" aria-label="Hidden testcase results"></div>
               </div>
+            </div>
+            <div class="traceback-panel" id="traceback-panel" hidden>
+              <div class="traceback-summary" id="traceback-summary">
+                <strong>No traceback</strong>
+                <span>Runtime errors will appear here with the full stack trace.</span>
+              </div>
+              <pre class="traceback-content" id="traceback-content">Run the code to capture a traceback.</pre>
             </div>
             <div class="test-output" id="test-output" role="status" aria-live="polite">Ready</div>
           </section>
@@ -271,6 +285,6 @@ class Solution:
         activityApiUrl: "https://frequent-reflection-combinations-raises.trycloudflare.com/api/activity",
       };
     </script>
-    <script src="./script.js?v=tutor-modes-1"></script>
+    <script src="./script.js?v=traceback-1"></script>
   </body>
 </html>

@@ -102,6 +102,7 @@ def build_tutor_messages(payload: dict[str, Any], tutor_mode: str = "encouraging
     source_code = _truncate(_text(code_state.get("source")))
     editor_status = _text(code_state.get("status"), "unknown")
     editor_output = _truncate(_text(code_state.get("output")), 1500)
+    editor_traceback = _truncate(_text(code_state.get("traceback")), 4000)
 
     context = _read_prompt_file(USER_TEMPLATE_PATH).format(
         problem_english_name=_text(problem.get("englishName"), "Unknown"),
@@ -114,6 +115,7 @@ def build_tutor_messages(payload: dict[str, Any], tutor_mode: str = "encouraging
         source_code=source_code,
         editor_status=editor_status,
         editor_output=editor_output or "empty",
+        editor_traceback=editor_traceback or "empty",
         test_state=_format_test_state(payload.get("testState")),
         learner_request=message,
     )

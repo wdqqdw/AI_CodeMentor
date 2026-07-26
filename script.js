@@ -16,6 +16,9 @@ const problemPanel = document.querySelector(".problem-panel");
 const expandEditorButton = document.querySelector(".editor-expand-button");
 const editorPanel = document.querySelector(".editor-panel");
 const testcasesPanel = document.querySelector("#testcases-panel");
+const tracebackPanel = document.querySelector("#traceback-panel");
+const tracebackSummary = document.querySelector("#traceback-summary");
+const tracebackContent = document.querySelector("#traceback-content");
 const publicTestcases = document.querySelector("#public-testcases");
 const hiddenTestcaseGrid = document.querySelector("#hidden-testcase-grid");
 const hiddenTestcasesSection = document.querySelector(".hidden-testcases");
@@ -71,6 +74,7 @@ let currentLanguage = languageSelect.value;
 let pyodideReadyPromise = null;
 let latestResults = new Map();
 let latestScope = "none";
+let latestTraceback = "";
 let chatBusy = false;
 let authMode = "register";
 let authSession = null;
@@ -109,6 +113,30 @@ const setStatus = (text, state = "pass") => {
 const setOutput = (text, state = "") => {
   testOutput.className = `test-output ${state}`.trim();
   testOutput.textContent = text;
+};
+
+const setActiveEditorTab = (view) => {
+  const nextView = view === "testcases" || view === "traceback" ? view : "code";
+  tabButtons.forEach((tab) => {
+    const isActive = tab.dataset.viewTab === nextView;
+    tab.classList.toggle("active", isActive);
+    tab.setAttribute("aria-selected", String(isActive));
+  });
+  editorPanel.classList.toggle("show-testcases", nextView === "testcases");
+  editorPanel.classList.toggle("show-traceback", nextView === "traceback");
+  testcasesPanel.hidden = nextView !== "testcases";
+  tracebackPanel.hidden = nextView !== "traceback";
+  window.requestAnimationFrame(syncEditor);
+};
+
+const setTraceback = (text = "", summary = "No traceback", state = "") => {
+  latestTraceback = String(text || "").trim();
+  editorPanel.classList.toggle("has-traceback", Boolean(latestTraceback));
+  tracebackSummary.className = `traceback-summary ${state}`.trim();
+  tracebackSummary.innerHTML = latestTraceback
+    ? `<strong>${escapeHtml(summary)}</strong><span>Full runtime error from the latest failed run.</span>`
+    : `<strong>No traceback</strong><span>Runtime errors will appear here with the full stack trace.</span>`;
+  tracebackContent.textContent = latestTraceback || "Run the code to capture a traceback.";
 };
 
 const setBusy = (isBusy) => {
@@ -234,6 +262,7 @@ const setCurrentProblem = (problem) => {
   codeCache.javascript = codeTemplates.javascript || "";
   latestResults = new Map();
   latestScope = "none";
+  setTraceback();
 };
 
 const parseFrontmatter = (markdown) => {
@@ -489,13 +518,8 @@ const loadProblemIntoWorkspace = async (path, { historyMode = "push", parentCate
     renderTestcases();
     setOutput("Ready", "");
     setStatus("Ready");
-    tabButtons.forEach((tab) => {
-      const isCodeTab = tab.dataset.viewTab === "code";
-      tab.classList.toggle("active", isCodeTab);
-      tab.setAttribute("aria-selected", String(isCodeTab));
-    });
-    editorPanel.classList.remove("show-testcases");
-    window.requestAnimationFrame(syncEditor);
+    setTraceback();
+    setActiveEditorTab("code");
 
     if (historyMode !== "none") {
       setBrowserState({ view: "problem", path, expandedCatalogCategory }, historyMode);
@@ -1008,7 +1032,16 @@ const runTests = async (tests) => {
 
   for (const [index, test] of tests.entries()) {
     const args = getTestArgs(test);
-    let result = language === "python" ? await runPythonCase(test) : jsSolution(...args);
+    let result;
+    try {
+      result = language === "python" ? await runPythonCase(test) : jsSolution(...args);
+    } catch (error) {
+      const runtimeError = error instanceof Error ? error : new Error(String(error));
+      runtimeError.caseIndex = index + 1;
+      runtimeError.caseId = test.id;
+      runtimeError.caseInput = formatCaseInput(test);
+      throw runtimeError;
+    }
     if (result === undefined && args.length && Array.isArray(args[0])) {
       result = args[0];
     }
@@ -1051,6 +1084,46 @@ const formatResults = (results) => {
   }
 
   return lines.join("\n");
+};
+
+const errorSummary = (error) => {
+  const message = String(error?.message || error || "Unknown runtime error").trim();
+  const lines = message.split("\n").map((line) => line.trim()).filter(Boolean);
+  const lastLine = [...lines].reverse().find((line) => !line.startsWith("Traceback")) || lines[0];
+  return lastLine || "Runtime error";
+};
+
+const formatTraceback = (error) => {
+  const title = `${error?.name || "Error"}: ${errorSummary(error)}`;
+  const context = [
+    `Problem: ${currentProblem?.englishName || "Unknown problem"}${currentProblem?.chineseName ? ` / ${currentProblem.chineseName}` : ""}`,
+    `Language: ${languageSelect.value}`,
+    error?.caseIndex ? `Failed case: ${error.caseIndex}${error.caseId ? ` (${error.caseId})` : ""}` : "",
+    error?.caseInput ? `Case input: ${error.caseInput}` : "",
+    `Captured at: ${new Date().toLocaleString()}`,
+  ].filter(Boolean);
+
+  const candidates = [
+    error?.pythonTraceback,
+    error?.traceback,
+    error?.stack,
+    error?.message,
+    String(error || ""),
+  ]
+    .filter(Boolean)
+    .map((item) => String(item).trim())
+    .filter(Boolean);
+
+  const seen = new Set();
+  const sections = [];
+  candidates.forEach((item) => {
+    if (!seen.has(item)) {
+      seen.add(item);
+      sections.push(item);
+    }
+  });
+
+  return [`${title}\n${context.join("\n")}`, ...sections].join("\n\n").trim();
 };
 
 const formatResultValue = (value) => {
@@ -1131,6 +1204,7 @@ const buildTutorPayload = (message) => ({
     source: codeEditor.value,
     status: statusMessage.textContent.trim(),
     output: testOutput.textContent.trim(),
+    traceback: latestTraceback,
   },
   testState: buildTestStateContext(),
 });
@@ -1144,6 +1218,7 @@ const buildActivityPayload = (eventType, result = {}) => ({
     source: codeEditor.value,
     status: statusMessage.textContent.trim(),
     output: testOutput.textContent.trim(),
+    traceback: latestTraceback,
   },
   testState: buildTestStateContext(),
   result,
@@ -1192,10 +1267,12 @@ const execute = async (tests, label, scope, eventType) => {
 
     latestScope = scope;
     latestResults = new Map(results.map((item) => [item.id, item]));
+    setTraceback();
     renderTestcases();
     setOutput(formatResults(results), allPassed ? "pass" : "fail");
     setStatus(allPassed ? `${label} passed` : `${passedCount}/${results.length} tests passed`, allPassed ? "pass" : "fail");
   } catch (error) {
+    const traceback = formatTraceback(error);
     latestScope = scope;
     latestResults = new Map(
       tests.map((test, index) => [
@@ -1204,11 +1281,13 @@ const execute = async (tests, label, scope, eventType) => {
       ]),
     );
     renderTestcases();
-    setOutput(error.message, "fail");
+    setTraceback(traceback, errorSummary(error), "fail");
+    setActiveEditorTab("traceback");
+    setOutput(`Code error. Open Traceback for full details: ${errorSummary(error)}`, "fail");
     setStatus("Code error", "fail");
     activityResult = {
       ...activityResult,
-      error: error.message,
+      error: traceback,
     };
   } finally {
     setBusy(false);
@@ -1265,12 +1344,7 @@ bookmarkButton.addEventListener("click", () => {
 
 tabButtons.forEach((button) => {
   button.addEventListener("click", () => {
-    tabButtons.forEach((tab) => {
-      tab.classList.toggle("active", tab === button);
-      tab.setAttribute("aria-selected", String(tab === button));
-    });
-    editorPanel.classList.toggle("show-testcases", button.dataset.viewTab === "testcases");
-    window.requestAnimationFrame(syncEditor);
+    setActiveEditorTab(button.dataset.viewTab);
   });
 });
 
@@ -1287,6 +1361,8 @@ languageSelect.addEventListener("change", () => {
   currentLanguage = languageSelect.value;
   codeEditor.value = codeCache[currentLanguage] || codeTemplates[currentLanguage] || "";
   setOutput(`${languageSelect.options[languageSelect.selectedIndex].text} mode ready`, "");
+  setTraceback();
+  setActiveEditorTab("code");
   setStatus("Ready");
   syncEditor();
 });

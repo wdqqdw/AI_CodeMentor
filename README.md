@@ -1,6 +1,6 @@
 # AI_CodeMentor
 
-AI_CodeMentor is an AI-assisted coding practice prototype. The current public page focuses on a single deeper exercise, **Boggle Solver / 棋盘单词搜索**, with a Python coding panel, test feedback, and an AI Tutor chat panel.
+AI_CodeMentor is an AI-assisted coding practice prototype. The current public page focuses on a single deeper exercise, **Boggle Solver / 棋盘单词搜索**, with a Python coding panel, testcase feedback, a full Traceback panel for runtime errors, and an AI Tutor chat panel.
 
 Last updated: 2026-07-26
 
@@ -24,6 +24,7 @@ Last updated: 2026-07-26
 - Backend conversation history window: latest `100000` characters.
 - Account system: enabled. The app opens with registration/login before AI Tutor can be used.
 - Tutor style binding: enabled. Each account is permanently bound to one Tutor style at registration, or at the next login for older unbound accounts.
+- Runtime error display: enabled. The editor has a dedicated `Traceback` tab that shows the full latest runtime error instead of truncating it in the bottom status strip.
 - Structured activity logging: enabled for Run, Submit, and AI Tutor chat events.
 - Activity dashboard: account-scoped login page with summary cards, a shared scroll area containing the accuracy-over-interactions line chart and an auto-expanding staggered vertical timeline.
 - Activity dashboard compatibility: legacy Tutor chat history is merged into the structured activity feed.
@@ -37,7 +38,7 @@ Last updated: 2026-07-26
 - The current Cloudflare Tunnel URL is a temporary `trycloudflare.com` URL. If the tunnel restarts and the URL changes, update both `index.html` and this README.
 - API keys, admin tokens, `.env.local`, backend logs, private account files, password hashes, sessions, and private chat history must stay outside this public repository.
 - Usernames, password hashes, login sessions, and per-account Tutor history are stored on the AutoDL server under the private backend data directory.
-- Per-account structured records are also stored privately, including code snapshots, problem metadata, test pass rates, visible testcase results, hidden testcase summaries, and Tutor message/reply snapshots.
+- Per-account structured records are also stored privately, including code snapshots, runtime tracebacks, problem metadata, test pass rates, visible testcase results, hidden testcase summaries, and Tutor message/reply snapshots.
 - The account summary CSV and admin console store/show password hash status only, not plaintext passwords. Existing user passwords are irreversible hashes; keep the entire private data directory off GitHub.
 - Root admin credentials are configured only in private AutoDL environment files through `ADMIN_USERNAME` and `ADMIN_PASSWORD_HASH`.
 - The backend debug page is for testing and inspection. Protected backend endpoints may require private credentials that should not be committed here.
@@ -47,7 +48,7 @@ Last updated: 2026-07-26
 
 - `index.html`: main GitHub Pages entry.
 - `styles.css`: main application layout and visual design.
-- `script.js`: coding panel, test runner, AI Tutor chat, and UI interactions.
+- `script.js`: coding panel, test runner, Traceback tab, AI Tutor chat, and UI interactions.
 - `problems.js`: generated/static problem catalog used by the page.
 - `problems/*.md`: editable problem definitions.
 - `backend/`: backend reference code and prompt templates that are safe to keep in the public repo.
