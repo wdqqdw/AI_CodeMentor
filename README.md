@@ -6,12 +6,12 @@ Last updated: 2026-07-26
 
 ## Quick Links
 
-- Live app: https://wdqqdw.github.io/AI_CodeMentor/
-- Structured activity dashboard: https://wdqqdw.github.io/AI_CodeMentor/activity.html
-- Backend debug page: https://wdqqdw.github.io/AI_CodeMentor/backend-chat.html
-- GitHub repository: https://github.com/wdqqdw/AI_CodeMentor
-- Current public backend health check: https://frequent-reflection-combinations-raises.trycloudflare.com/health
-- Current public tutor API endpoint: https://frequent-reflection-combinations-raises.trycloudflare.com/api/tutor
+- <a href="https://wdqqdw.github.io/AI_CodeMentor/" target="_blank" rel="noopener noreferrer">Live app</a>
+- <a href="https://wdqqdw.github.io/AI_CodeMentor/activity.html" target="_blank" rel="noopener noreferrer">Structured activity dashboard</a>
+- <a href="https://wdqqdw.github.io/AI_CodeMentor/backend-chat.html" target="_blank" rel="noopener noreferrer">Backend debug page</a>
+- <a href="https://github.com/wdqqdw/AI_CodeMentor" target="_blank" rel="noopener noreferrer">GitHub repository</a>
+- <a href="https://frequent-reflection-combinations-raises.trycloudflare.com/health" target="_blank" rel="noopener noreferrer">Current public backend health check</a>
+- <a href="https://frequent-reflection-combinations-raises.trycloudflare.com/api/tutor" target="_blank" rel="noopener noreferrer">Current public tutor API endpoint</a>
 
 ## Current Deployment
 
