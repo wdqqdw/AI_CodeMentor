@@ -27,7 +27,7 @@ Last updated: 2026-08-03
 - Tutor style binding: enabled. Each account is permanently bound to one Tutor style at registration, or at the next login for older unbound accounts.
 - Runtime error display: enabled. The editor has a dedicated `Traceback` tab that shows full per-case runtime errors instead of truncating them in the bottom status strip. A single case error does not stop the remaining cases from running.
 - Run/Submit busy state: enabled. While tests are executing, both execution buttons are disabled, the active button shows `Running...` or `Submitting...`, and the status/output areas show progress text.
-- Python execution isolation: enabled. Python submissions run inside `pyodide-worker.js` instead of the browser main thread, with per-case hard timeouts and a repeated-timeout guard so exponential DFS attempts cannot freeze the page.
+- Python execution isolation: enabled. Python submissions run inside `pyodide-worker.js` instead of the browser main thread, using Pyodide `v0.28.2`, with per-case hard timeouts and a repeated-timeout guard so exponential DFS attempts cannot freeze the page.
 - Structured activity logging: enabled for Run, Submit, and AI Tutor chat events.
 - Activity dashboard: account-scoped login page with summary cards, a shared scroll area containing the accuracy-over-interactions line chart and an auto-expanding staggered vertical timeline.
 - Activity dashboard compatibility: legacy Tutor chat history is merged into the structured activity feed.

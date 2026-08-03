@@ -1,4 +1,4 @@
-const PYODIDE_BASE_URL = "https://cdn.jsdelivr.net/pyodide/v314.0.2/full/";
+const PYODIDE_BASE_URL = "https://cdn.jsdelivr.net/pyodide/v0.28.2/full/";
 
 let pyodideReadyPromise = null;
 

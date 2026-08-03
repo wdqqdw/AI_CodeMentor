@@ -74,7 +74,7 @@ const codeCache = {
 };
 
 let currentLanguage = languageSelect.value;
-const pythonWorkerUrl = "./pyodide-worker.js?v=python-worker-timeout-1";
+const pythonWorkerUrl = "./pyodide-worker.js?v=pyodide-0-28-2-worker-1";
 const pythonWorkerInitTimeoutMs = 60000;
 const pythonCaseTimeoutMs = 2400;
 let pythonWorker = null;
