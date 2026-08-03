@@ -2,7 +2,7 @@
 
 AI_CodeMentor is an AI-assisted coding practice prototype. The current public page focuses on a single deeper exercise, **Boggle Solver / 棋盘单词搜索**, with a knowledge-first lesson view, a Python coding panel, testcase feedback, a full Traceback panel for runtime errors, and an AI Tutor chat panel.
 
-Last updated: 2026-07-26
+Last updated: 2026-08-03
 
 ## Quick Links
 
@@ -27,6 +27,7 @@ Last updated: 2026-07-26
 - Tutor style binding: enabled. Each account is permanently bound to one Tutor style at registration, or at the next login for older unbound accounts.
 - Runtime error display: enabled. The editor has a dedicated `Traceback` tab that shows full per-case runtime errors instead of truncating them in the bottom status strip. A single case error does not stop the remaining cases from running.
 - Run/Submit busy state: enabled. While tests are executing, both execution buttons are disabled, the active button shows `Running...` or `Submitting...`, and the status/output areas show progress text.
+- Python execution isolation: enabled. Python submissions run inside `pyodide-worker.js` instead of the browser main thread, with per-case hard timeouts and a repeated-timeout guard so exponential DFS attempts cannot freeze the page.
 - Structured activity logging: enabled for Run, Submit, and AI Tutor chat events.
 - Activity dashboard: account-scoped login page with summary cards, a shared scroll area containing the accuracy-over-interactions line chart and an auto-expanding staggered vertical timeline.
 - Activity dashboard compatibility: legacy Tutor chat history is merged into the structured activity feed.

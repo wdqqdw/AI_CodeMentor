@@ -74,7 +74,13 @@ const codeCache = {
 };
 
 let currentLanguage = languageSelect.value;
-let pyodideReadyPromise = null;
+const pythonWorkerUrl = "./pyodide-worker.js?v=python-worker-timeout-1";
+const pythonWorkerInitTimeoutMs = 60000;
+const pythonCaseTimeoutMs = 2400;
+let pythonWorker = null;
+let pythonWorkerReadyPromise = null;
+let pythonWorkerRequestId = 0;
+const pythonWorkerPending = new Map();
 let latestResults = new Map();
 let latestScope = "none";
 let latestTraceback = "";
@@ -1024,46 +1030,126 @@ const getJavaScriptSolution = () => {
   return solution;
 };
 
-const loadPythonRuntime = async () => {
-  if (!window.loadPyodide) {
-    throw new Error("Python runtime failed to load. Refresh the page and try again.");
+const waitForPaint = () =>
+  new Promise((resolve) => {
+    window.requestAnimationFrame(() => window.setTimeout(resolve, 0));
+  });
+
+const makeRuntimeError = (errorLike) => {
+  if (errorLike instanceof Error) {
+    return errorLike;
   }
 
-  if (!pyodideReadyPromise) {
+  const runtimeError = new Error(errorLike?.message || String(errorLike || "Unknown runtime error"));
+  runtimeError.name = errorLike?.name || "RuntimeError";
+  if (errorLike?.stack) {
+    runtimeError.stack = errorLike.stack;
+    runtimeError.pythonTraceback = errorLike.stack;
+  }
+  return runtimeError;
+};
+
+const rejectPendingPythonRequests = (error) => {
+  pythonWorkerPending.forEach((pending) => {
+    window.clearTimeout(pending.timeoutId);
+    pending.reject(error);
+  });
+  pythonWorkerPending.clear();
+};
+
+const resetPythonWorker = (reason = null) => {
+  if (pythonWorker) {
+    pythonWorker.terminate();
+    pythonWorker = null;
+  }
+  pythonWorkerReadyPromise = null;
+
+  if (reason) {
+    rejectPendingPythonRequests(reason);
+  }
+};
+
+const handlePythonWorkerMessage = (event) => {
+  const { id, ok, result, error } = event.data || {};
+  const pending = pythonWorkerPending.get(id);
+  if (!pending) {
+    return;
+  }
+
+  window.clearTimeout(pending.timeoutId);
+  pythonWorkerPending.delete(id);
+
+  if (ok) {
+    pending.resolve(result);
+  } else {
+    pending.reject(makeRuntimeError(error));
+  }
+};
+
+const handlePythonWorkerFailure = (event) => {
+  const error = makeRuntimeError(event?.message ? { name: "WorkerError", message: event.message } : event?.error || event);
+  resetPythonWorker(error);
+};
+
+const createPythonWorker = () => {
+  if (pythonWorker) {
+    return pythonWorker;
+  }
+
+  pythonWorker = new Worker(pythonWorkerUrl);
+  pythonWorker.addEventListener("message", handlePythonWorkerMessage);
+  pythonWorker.addEventListener("error", handlePythonWorkerFailure);
+  pythonWorker.addEventListener("messageerror", handlePythonWorkerFailure);
+  return pythonWorker;
+};
+
+const sendPythonWorkerRequest = (payload, timeoutMs) => {
+  const worker = createPythonWorker();
+  const id = pythonWorkerRequestId + 1;
+  pythonWorkerRequestId = id;
+
+  return new Promise((resolve, reject) => {
+    const timeoutId = window.setTimeout(() => {
+      pythonWorkerPending.delete(id);
+      const timeoutError = new Error(
+        `Python execution timed out after ${Math.round(timeoutMs)}ms. Try shared-prefix pruning or a Trie to avoid exhaustive search.`,
+      );
+      timeoutError.name = "TimeoutError";
+      reject(timeoutError);
+      resetPythonWorker(timeoutError);
+    }, timeoutMs);
+
+    pythonWorkerPending.set(id, { resolve, reject, timeoutId });
+    worker.postMessage({ ...payload, id });
+  });
+};
+
+const ensurePythonRuntime = async () => {
+  if (!pythonWorkerReadyPromise) {
     setOutput("Loading Python runtime...", "");
-    pyodideReadyPromise = window.loadPyodide({
-      indexURL: "https://cdn.jsdelivr.net/pyodide/v314.0.2/full/",
+    pythonWorkerReadyPromise = sendPythonWorkerRequest({ type: "init" }, pythonWorkerInitTimeoutMs).catch((error) => {
+      resetPythonWorker();
+      throw error;
     });
   }
 
-  return pyodideReadyPromise;
+  return pythonWorkerReadyPromise;
 };
 
 const runPythonCase = async (test) => {
-  const pyodide = await loadPythonRuntime();
+  await ensurePythonRuntime();
   const methodName = safeIdentifier(currentProblem?.methodName || "twoSum", "twoSum");
-  pyodide.globals.set("__case_json", JSON.stringify({ args: getTestArgs(test) }));
-
-  const rawResult = pyodide.runPython(`
-import json as __json
-
-${codeEditor.value}
-
-__case = __json.loads(__case_json)
-__args = __case["args"]
-__result = Solution().${methodName}(*__args)
-if __result is None and __args:
-    __result = __args[0]
-__result
-`);
-
-  const result = rawResult && typeof rawResult.toJs === "function" ? rawResult.toJs() : rawResult;
-
-  if (rawResult && typeof rawResult.destroy === "function") {
-    rawResult.destroy();
-  }
-
-  return result;
+  const timeLimitMs = Number(test.timeLimitMs || 0);
+  const timeoutMs = Math.max(pythonCaseTimeoutMs, timeLimitMs + 600);
+  return sendPythonWorkerRequest(
+    {
+      type: "run",
+      code: codeEditor.value,
+      args: getTestArgs(test),
+      methodName,
+    },
+    timeoutMs,
+  );
 };
 
 const isValidTwoSum = (result, test) => {
@@ -1129,8 +1215,16 @@ const runTests = async (tests) => {
   const language = languageSelect.value;
   const jsSolution = language === "javascript" ? getJavaScriptSolution() : null;
   const results = [];
+  let consecutiveTimeouts = 0;
+
+  if (language === "python") {
+    await ensurePythonRuntime();
+  }
 
   for (const [index, test] of tests.entries()) {
+    setOutput(`Running case ${index + 1}/${tests.length}...`, "");
+    await waitForPaint();
+
     const caseStart = window.performance?.now ? window.performance.now() : Date.now();
     try {
       const args = getTestArgs(test);
@@ -1159,6 +1253,7 @@ const runTests = async (tests) => {
         input: getTestInput(test),
         expected: getExpected(test),
       });
+      consecutiveTimeouts = 0;
     } catch (error) {
       const elapsedMs = (window.performance?.now ? window.performance.now() : Date.now()) - caseStart;
       const runtimeError = normalizeCaseError(error, index, test);
@@ -1174,6 +1269,33 @@ const runTests = async (tests) => {
         input: getTestInput(test),
         expected: getExpected(test),
       });
+
+      consecutiveTimeouts = runtimeError.name === "TimeoutError" ? consecutiveTimeouts + 1 : 0;
+      if (language === "python" && consecutiveTimeouts >= 2 && index < tests.length - 1) {
+        const guardMessage =
+          "Stopped after repeated Python timeouts to keep the page responsive. Try shared-prefix pruning before submitting again.";
+        tests.slice(index + 1).forEach((skippedTest, skippedOffset) => {
+          const isFirstSkipped = skippedOffset === 0;
+          const guardError = isFirstSkipped
+            ? normalizeCaseError(new Error(guardMessage), index + 1 + skippedOffset, skippedTest)
+            : null;
+          if (guardError) {
+            guardError.name = "TimeoutGuardError";
+          }
+          results.push({
+            id: skippedTest.id,
+            index: index + skippedOffset + 2,
+            passed: false,
+            result: "Skipped",
+            error: guardError ? errorSummary(guardError) : "",
+            traceback: guardError ? formatTraceback(guardError) : "",
+            elapsedMs: 0,
+            input: getTestInput(skippedTest),
+            expected: getExpected(skippedTest),
+          });
+        });
+        break;
+      }
     }
   }
 
@@ -1399,6 +1521,7 @@ const execute = async (tests, label, scope, eventType) => {
   const busyLabel = eventType === "submit" ? "Submitting" : "Running";
   setStatus(`${busyLabel} ${tests.length} tests...`, "pass");
   setOutput(`${busyLabel} ${label.toLowerCase()}...`, "");
+  await waitForPaint();
   let activityResult = {
     label,
     scope,
