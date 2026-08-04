@@ -1771,7 +1771,7 @@ class TutorHandler(BaseHTTPRequestHandler):
             scaffold_fallback_used = False
             if path == "/api/tutor":
                 content = normalize_tutor_reply(content)
-                if tutor_reply_needs_fallback(content, scaffold_mode, payload.get("_serverLearnerState")):
+                if not guardrail_used and tutor_reply_needs_fallback(content, scaffold_mode, payload.get("_serverLearnerState")):
                     content = tutor_reply_fallback(tutor_mode, scaffold_mode, payload.get("_serverLearnerState"))
                     scaffold_fallback_used = True
             entry = {
