@@ -89,6 +89,7 @@ curl http://127.0.0.1:8787/api/my-activity \
 Tutor calls automatically create `chat` activity records. The main frontend creates `run` and `submit` records after code execution.
 
 `/api/my-activity` also merges older per-account Tutor chat history into the activity feed, so conversations created before structured logging was added still appear on the dashboard.
+Learner-facing `/api/my-history` and `/api/my-activity` return sanitized copies. Hidden scaffold fields, raw prompts, model message arrays, and server learner-state summaries stay in private files or admin/debug-only views.
 
 ## Tutor Prompt Files
 
@@ -101,3 +102,5 @@ The tutor prompt is intentionally editable without touching the server code:
 - `backend/prompts/scaffolds/*.md`: hidden scaffold-condition modules for fixed low, fixed high, and adaptive support.
 
 The backend reads these files when it builds each Tutor request, so edits apply on the next request.
+The server also applies deterministic scaffold guardrails when a model reply is too long, includes disallowed code detail, or violates the fixed-low question-only format.
+The latest six-condition balance notes are in `backend/prompts/evaluations/scaffold_condition_balance_2026-08-04.md`.

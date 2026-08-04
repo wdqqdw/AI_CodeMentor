@@ -34,10 +34,11 @@ Last updated: 2026-08-04
 - Run/Submit busy state: enabled. While tests are executing, both execution buttons are disabled, the active button shows `Running...` or `Submitting...`, and the status/output areas show progress text.
 - Python execution isolation: enabled. Python submissions run inside `pyodide-worker.js` instead of the browser main thread, using Pyodide `v0.28.2`, with per-case hard timeouts and a repeated-timeout guard so exponential DFS attempts cannot freeze the page.
 - Structured activity logging: enabled for Run, Submit, and AI Tutor chat events.
+- Learner-facing history/activity APIs: sanitized. Students can reload their own conversation and learning records, but hidden scaffold metadata, raw prompts, full message arrays, and server learner-state summaries are stripped before response.
 - Activity dashboard: account-scoped login page with summary cards, a shared scroll area containing the accuracy-over-interactions line chart and an auto-expanding staggered vertical timeline.
 - Activity dashboard compatibility: legacy Tutor chat history is merged into the structured activity feed.
 - Admin account console: root-authenticated page for viewing all accounts, password storage status, account summaries, and short-lived dashboard links for each user.
-- Tutor prompts: Encouraging Tutor v9 and Neutral Tutor v9, crossed with Fixed Low Scaffold, Fixed High Scaffold, and Adaptive Scaffold prompt modules. Fixed Low only asks diagnostic questions; Fixed High gives one small local repair direction and may include a tiny code fragment without a full solution; Adaptive uses learner state plus recent failure counts to choose support level. High-risk requests for complete code, final answers, or exhaustive implementation steps still use a deterministic backend guardrail.
+- Tutor prompts: Encouraging Tutor v9 and Neutral Tutor v9, crossed with Fixed Low Scaffold, Fixed High Scaffold, and Adaptive Scaffold prompt modules. Fixed Low only asks diagnostic questions; Fixed High gives one small local repair direction without a full solution; Adaptive uses learner state plus recent failure counts to choose support level. High-risk requests and scaffold violations use deterministic backend guardrails to keep length, code-detail, and refusal standards aligned.
 - Boggle Solver testcases: 140 cases grouped into 11 learning tiers, with non-spoiling hints for the first 130 cases and fully hidden challenge cases for the final 10.
 - Boggle Solver performance tests: enabled. Several later cases include measured `timeLimitMs` thresholds; a plain word-by-word DFS can produce answers but is expected to exceed these limits, while shared-prefix pruning with a Trie should stay comfortably below them.
 - Private account summary CSV: enabled on the backend. The server maintains `account_summary.csv` inside the private backend data directory with usernames, bound Tutor style, password hashes, activity counts, best score, latest problem, and timestamps.
@@ -49,6 +50,7 @@ Last updated: 2026-08-04
 - Usernames, password hashes, login sessions, and per-account Tutor history are stored on the AutoDL server under the private backend data directory.
 - Per-account structured records are also stored privately, including code snapshots, runtime tracebacks, problem metadata, test pass rates, visible testcase results, hidden testcase summaries, and Tutor message/reply snapshots.
 - Hidden scaffold assignments are private experiment metadata and should not be shown in learner-facing pages or learner-facing APIs.
+- Private backend files keep the full debugging record; learner-facing endpoints return sanitized copies only.
 - The account summary CSV and admin console store/show password hash status only, not plaintext passwords. Existing user passwords are irreversible hashes; keep the entire private data directory off GitHub.
 - Root admin credentials are configured only in private AutoDL environment files through `ADMIN_USERNAME` and `ADMIN_PASSWORD_HASH`.
 - The backend debug page is for testing and inspection. Protected backend endpoints may require private credentials that should not be committed here.

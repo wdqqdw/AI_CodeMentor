@@ -31,7 +31,13 @@ BACKEND_DIR = Path(__file__).resolve().parent
 
 
 def load_env_file() -> None:
-    for env_path in (ROOT_DIR / ".env.local", BACKEND_DIR / ".env.local"):
+    private_root = ROOT_DIR.parent / f"{ROOT_DIR.name}_Private"
+    for env_path in (
+        private_root / ".env.local",
+        private_root / "backend" / ".env.local",
+        ROOT_DIR / ".env.local",
+        BACKEND_DIR / ".env.local",
+    ):
         if not env_path.exists():
             continue
 
@@ -47,6 +53,13 @@ def load_env_file() -> None:
 
 
 load_env_file()
+
+
+def default_private_data_dir() -> Path:
+    private_backend_dir = ROOT_DIR.parent / f"{ROOT_DIR.name}_Private" / "backend"
+    if private_backend_dir.exists():
+        return private_backend_dir / "private_data"
+    return BACKEND_DIR / "private_data"
 
 BASE_URL = os.getenv("AUTODL_BASE_URL", "https://www.autodl.art/api/v1")
 MODEL = os.getenv("AI_MENTOR_MODEL", "DeepSeek-V4-Pro")
@@ -105,7 +118,7 @@ SCAFFOLD_MODE_ALIASES = {
 
 HISTORY_DIR = BACKEND_DIR / "logs"
 HISTORY_PATH = HISTORY_DIR / "tutor_history.jsonl"
-PRIVATE_DATA_DIR = Path(os.getenv("CODEMENTOR_DATA_DIR", str(BACKEND_DIR / "private_data")))
+PRIVATE_DATA_DIR = Path(os.getenv("CODEMENTOR_DATA_DIR", str(default_private_data_dir())))
 USERS_PATH = PRIVATE_DATA_DIR / "users.json"
 SESSIONS_PATH = PRIVATE_DATA_DIR / "sessions.json"
 ADMIN_SESSIONS_PATH = PRIVATE_DATA_DIR / "admin_sessions.json"
@@ -356,7 +369,7 @@ def ensure_account_metadata(user: dict[str, Any]) -> dict[str, Any]:
     existing = accounts.get(metadata_key)
     if isinstance(existing, dict) and existing.get("scaffold_mode"):
         for field in ("scaffold_mode", "scaffold_mode_label", "condition_key", "condition_label", "metadata_bound_at"):
-            if existing.get(field) and not user.get(field):
+            if existing.get(field):
                 user[field] = existing[field]
         return existing
 
@@ -474,6 +487,37 @@ def public_user(user: dict[str, Any]) -> dict[str, Any]:
         "tutor_mode_label": tutor_mode_label(mode),
         "tutor_mode_locked": bool(user.get("tutor_mode")),
     }
+
+
+def public_history_entry(entry: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": entry.get("id", ""),
+        "created_at": entry.get("created_at", ""),
+        "endpoint": entry.get("endpoint", ""),
+        "model": entry.get("model", ""),
+        "template_used": bool(entry.get("template_used")),
+        "guardrail_used": bool(entry.get("guardrail_used")),
+        "learner_request": trim_text(entry.get("learner_request"), 6000),
+        "message": trim_text(entry.get("message"), 12000),
+        "error": trim_text(entry.get("error"), 2000),
+        "user_id": entry.get("user_id"),
+        "username": entry.get("username"),
+    }
+
+
+def public_activity_entry(entry: dict[str, Any]) -> dict[str, Any]:
+    clean_entry = dict(entry)
+    for hidden_key in (
+        "scaffold_mode",
+        "scaffold_mode_label",
+        "condition_key",
+        "condition_label",
+        "learner_state",
+        "raw_prompt",
+        "messages",
+    ):
+        clean_entry.pop(hidden_key, None)
+    return clean_entry
 
 
 def validate_credentials(username: str, password: str) -> tuple[str, str]:
@@ -752,6 +796,73 @@ def stream_chat_text(messages: list[dict[str, str]]) -> str:
             chunks.append(chunk.choices[0].delta.content)
 
     return "".join(chunks)
+
+
+def normalize_tutor_reply(content: str) -> str:
+    text = str(content or "").strip()
+    if "```" in text:
+        return text
+    lines = [line.strip().lstrip("-*0123456789.、 ") for line in text.splitlines() if line.strip()]
+    return re.sub(r"[ \t]{2,}", " ", " ".join(lines)).strip()
+
+
+def tutor_reply_fallback(tutor_mode: Any, scaffold_mode: Any, learner_state: dict[str, Any] | None = None) -> str:
+    mode = normalize_tutor_mode(tutor_mode)
+    scaffold = normalize_scaffold_mode(scaffold_mode)
+    state = learner_state if isinstance(learner_state, dict) else {}
+    consecutive_failures = safe_int(state.get("consecutive_failed_attempts"))
+
+    if scaffold == "fixed_low" or (scaffold == "adaptive" and consecutive_failures < 3):
+        if mode == "neutral":
+            return "这题的核心是路径搜索中的状态一致性。当前路径前进和回退时，哪些信息必须同步变化，才能避免重复使用同一格？"
+        return "先抓住一个核心：路径搜索时状态要前进和回退都一致。你能检查当前路径里哪些信息必须同步变化，才不会重复使用同一格吗？"
+
+    if mode == "neutral":
+        return "当前失败更像局部状态或边界处理问题。先把修复集中在一个点：读取邻居前确认行列仍在棋盘内，递归返回后立刻撤销本路径的访问标记。检查这两处是否成对出现。"
+    return "你已经有可调试的方向了，当前失败更像局部状态或边界处理问题。先只修一个点：读取邻居前确认行列在棋盘内，递归返回后立刻撤销本路径的访问标记。你可以检查这两处是否成对出现。"
+
+
+def tutor_reply_needs_fallback(content: str, scaffold_mode: Any, learner_state: dict[str, Any] | None = None) -> bool:
+    text = str(content or "")
+    scaffold = normalize_scaffold_mode(scaffold_mode)
+    state = learner_state if isinstance(learner_state, dict) else {}
+    consecutive_failures = safe_int(state.get("consecutive_failed_attempts"))
+    low_support = scaffold == "fixed_low" or (scaffold == "adaptive" and consecutive_failures < 3)
+    question_count = text.count("？") + text.count("?")
+    code_markers = [
+        "```",
+        "`",
+        ";",
+        " for ",
+        " while ",
+        " in range",
+        "def ",
+        "class ",
+        "import ",
+        "return ",
+        "continue",
+        "break",
+        "pass",
+        ".add(",
+        ".remove(",
+        "board[",
+        "visited[",
+        "prefixes =",
+        "print(",
+        "例如",
+        "打印",
+        "写一行",
+        "这一行",
+        "那一行",
+    ]
+
+    if "\n" in text:
+        return True
+    if low_support:
+        return question_count != 1 or any(marker in text for marker in code_markers) or len(text) > 115
+
+    dangerous_code_detail = any(marker in text for marker in code_markers)
+    return len(text) > 145 or dangerous_code_detail
 
 
 def format_raw_prompt(messages: list[dict[str, str]]) -> str:
@@ -1491,7 +1602,7 @@ class TutorHandler(BaseHTTPRequestHandler):
             self.send_json(
                 HTTPStatus.OK,
                 {
-                    "entries": entries,
+                    "entries": [public_history_entry(entry) for entry in entries],
                     "count": len(entries),
                     "char_limit": limit,
                     "user": public_user(context["user"]),
@@ -1512,7 +1623,7 @@ class TutorHandler(BaseHTTPRequestHandler):
             self.send_json(
                 HTTPStatus.OK,
                 {
-                    "entries": entries,
+                    "entries": [public_activity_entry(entry) for entry in entries],
                     "count": len(entries),
                     "char_limit": limit,
                     "user": public_user(context["user"]),
@@ -1618,7 +1729,7 @@ class TutorHandler(BaseHTTPRequestHandler):
                 payload = self.read_json_body()
                 entry = build_activity_entry(context["user"], payload)
                 append_user_activity(context["user"]["id"], entry)
-                self.send_json(HTTPStatus.CREATED, {"ok": True, "entry": entry})
+                self.send_json(HTTPStatus.CREATED, {"ok": True, "entry": public_activity_entry(entry)})
             except ValueError as error:
                 self.send_json(HTTPStatus.BAD_REQUEST, {"error": str(error)})
             return
@@ -1657,6 +1768,12 @@ class TutorHandler(BaseHTTPRequestHandler):
             learner_request = learner_request_from_payload(payload, messages)
             guardrail_used = path == "/api/tutor" and is_solution_request(learner_request)
             content = solution_request_guardrail_reply(tutor_mode, scaffold_mode) if guardrail_used else stream_chat_text(messages)
+            scaffold_fallback_used = False
+            if path == "/api/tutor":
+                content = normalize_tutor_reply(content)
+                if tutor_reply_needs_fallback(content, scaffold_mode, payload.get("_serverLearnerState")):
+                    content = tutor_reply_fallback(tutor_mode, scaffold_mode, payload.get("_serverLearnerState"))
+                    scaffold_fallback_used = True
             entry = {
                 "id": f"{int(time.time() * 1000)}-{threading.get_ident()}",
                 "created_at": now_iso(),
@@ -1669,6 +1786,7 @@ class TutorHandler(BaseHTTPRequestHandler):
                 "learner_state": payload.get("_serverLearnerState") if path == "/api/tutor" else {},
                 "template_used": payload.get("messages") is None,
                 "guardrail_used": guardrail_used,
+                "scaffold_fallback_used": scaffold_fallback_used,
                 "learner_request": learner_request,
                 "messages": messages,
                 "raw_prompt": raw_prompt,
