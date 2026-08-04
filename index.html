@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CodeMentor AI</title>
-    <link rel="stylesheet" href="./styles.css?v=statement-expand-1" />
+    <link rel="stylesheet" href="./styles.css?v=knowledge-flow-1" />
   </head>
   <body>
     <div class="app-shell">
@@ -57,23 +57,19 @@
                   </p>
                 </div>
               </div>
-              <div class="tutor-guide-grid">
-                <article>
-                  <strong>什么时候适合问</strong>
-                  <p>看不懂题意、不会设计递归状态、测试只过一部分、Traceback 看不懂、或者想确认下一步优化方向时，都可以提问。</p>
-                </article>
-                <article>
-                  <strong>模型能看到什么</strong>
-                  <p>它会收到当前题目、你正在看的页面类型、编辑器里的代码、语言、测试通过率、公开提示和最新报错信息。</p>
-                </article>
-                <article>
-                  <strong>模型看不到什么</strong>
-                  <p>它不会看到隐藏测试的具体输入和答案，也不会看到你的密码、后台私有文件或没有写进页面/对话的外部信息。</p>
-                </article>
-                <article>
-                  <strong>模型会怎么回答</strong>
-                  <p>它会给提示、解释概念、提出检查问题和调试方向；它不会直接输出完整代码、最终答案或逐行可复制的实现。</p>
-                </article>
+              <div class="tutor-guide-flow">
+                <p>
+                  <strong>适合提问的时机：</strong>看不懂题意、不会设计递归状态、测试只过一部分、Traceback 看不懂，
+                  或者想确认下一步优化方向时，都可以直接问右侧 Tutor。
+                  <strong>AI Tutor 可以直接看到：</strong>当前题目、你正在看的页面类型、编辑器里的代码、语言、测试通过率、
+                  公开提示和最新报错信息；这些内容不用手动复制到对话里。
+                </p>
+                <p>
+                  <strong>AI Tutor 看不到：</strong>隐藏测试的具体输入和答案、你的密码、后台私有文件，
+                  以及没有写进页面或对话的外部信息。
+                  <strong>它会如何回答：</strong>它会给提示、解释概念、提出检查问题和调试方向；
+                  它不会直接输出完整代码、最终答案或逐行可复制的实现。
+                </p>
               </div>
               <p class="lesson-note">
                 推荐提问方式：先说明你目前的想法，再指出卡住的位置。例如“我会枚举起点，但不知道 used 什么时候恢复”，

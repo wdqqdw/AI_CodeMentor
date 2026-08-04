@@ -19,6 +19,7 @@ Last updated: 2026-08-04
 - Frontend hosting: GitHub Pages.
 - Main exercise: Boggle Solver.
 - Default entry view: Knowledge. Learners first see a roughly 10-minute prerequisite lesson on 2D grids, DFS, backtracking, prefix pruning, and how/when to use AI Tutor, then switch to Practice from the top-left segmented control.
+- Knowledge AI Tutor guide: compact narrative text. It tells learners that current problem context, page type, code, language, pass rate, public hints, and latest traceback are visible to the Tutor automatically and do not need to be copied manually.
 - Practice statement language: bilingual English/Chinese problem description for Boggle Solver.
 - Statement expansion: enabled. The Practice problem statement/examples can expand within the left pane, separate from the code editor expansion.
 - AI backend: AutoDL server running a local Python service on port `8787`.
