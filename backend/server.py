@@ -455,13 +455,23 @@ def update_account_metadata_login(user: dict[str, Any]) -> None:
     write_json_file(ACCOUNT_METADATA_PATH, metadata_store)
 
 
-def solution_request_guardrail_reply(tutor_mode: Any, scaffold_mode: Any = DEFAULT_SCAFFOLD_MODE) -> str:
+def solution_request_guardrail_reply(
+    tutor_mode: Any,
+    scaffold_mode: Any = DEFAULT_SCAFFOLD_MODE,
+    learner_state: dict[str, Any] | None = None,
+) -> str:
     mode = normalize_tutor_mode(tutor_mode)
     scaffold = normalize_scaffold_mode(scaffold_mode)
-    if scaffold == "fixed_low":
+    state = learner_state if isinstance(learner_state, dict) else {}
+    attempt_count = safe_int(state.get("attempt_count"))
+    consecutive_failures = safe_int(state.get("consecutive_failed_attempts"))
+    early_adaptive = scaffold == "adaptive" and attempt_count == 0 and consecutive_failures == 0
+    low_support = scaffold == "fixed_low" or early_adaptive
+
+    if low_support:
         if mode == "neutral":
-            return "不能提供完整代码、最终答案或可复制实现。当前只需要确认一个问题：搜索一条路径时，哪些状态表示这个格子已经被当前路径使用？"
-        return "我不能提供完整代码、最终答案或可复制实现。先只看一个小问题：在搜索一条路径时，你觉得哪些状态能表示这个格子已经被当前路径使用？"
+            return "不能提供代码、最终答案或可复制实现。先把问题缩小到一步：从棋盘某个格子出发，下一步有哪些相邻格可以选择？"
+        return "我不能提供代码、最终答案或可复制实现。先把问题缩小到一步：从棋盘某个格子出发，你觉得下一步有哪些相邻格可以选择？"
 
     if mode == "neutral":
         return (
@@ -810,9 +820,14 @@ def tutor_reply_fallback(tutor_mode: Any, scaffold_mode: Any, learner_state: dic
     mode = normalize_tutor_mode(tutor_mode)
     scaffold = normalize_scaffold_mode(scaffold_mode)
     state = learner_state if isinstance(learner_state, dict) else {}
+    attempt_count = safe_int(state.get("attempt_count"))
     consecutive_failures = safe_int(state.get("consecutive_failed_attempts"))
 
     if scaffold == "fixed_low" or (scaffold == "adaptive" and consecutive_failures < 3):
+        if scaffold == "adaptive" and attempt_count == 0:
+            if mode == "neutral":
+                return "先把任务拆成从一个格子出发的一步选择。给定当前位置时，哪些相邻格可以作为下一个字符的候选？"
+            return "先别急着写完整过程，把任务拆成从一个格子出发的一步选择。给定当前位置时，你觉得哪些相邻格可以作为下一个字符的候选？"
         if mode == "neutral":
             return "这题的核心是路径搜索中的状态一致性。当前路径前进和回退时，哪些信息必须同步变化，才能避免重复使用同一格？"
         return "先抓住一个核心：路径搜索时状态要前进和回退都一致。你能检查当前路径里哪些信息必须同步变化，才不会重复使用同一格吗？"
@@ -1767,7 +1782,11 @@ class TutorHandler(BaseHTTPRequestHandler):
             raw_prompt = format_raw_prompt(messages)
             learner_request = learner_request_from_payload(payload, messages)
             guardrail_used = path == "/api/tutor" and is_solution_request(learner_request)
-            content = solution_request_guardrail_reply(tutor_mode, scaffold_mode) if guardrail_used else stream_chat_text(messages)
+            content = (
+                solution_request_guardrail_reply(tutor_mode, scaffold_mode, payload.get("_serverLearnerState"))
+                if guardrail_used
+                else stream_chat_text(messages)
+            )
             scaffold_fallback_used = False
             if path == "/api/tutor":
                 content = normalize_tutor_reply(content)
