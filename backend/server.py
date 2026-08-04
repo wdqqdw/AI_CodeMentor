@@ -473,17 +473,22 @@ def solution_request_guardrail_reply(
             return "不能提供代码、最终答案或可复制实现。先把问题缩小到一步：从棋盘某个格子出发，下一步有哪些相邻格可以选择？"
         return "我不能提供代码、最终答案或可复制实现。先把问题缩小到一步：从棋盘某个格子出发，你觉得下一步有哪些相邻格可以选择？"
 
+    if attempt_count == 0:
+        if mode == "neutral":
+            return "完整代码和可复制答案不能提供。先定位起点选择和八方向候选；如果已有代码，可以按行号检查一个局部位置。你现在想先看哪一小段逻辑？"
+        return "我理解你想快一点看到代码，但完整代码和可复制答案不能提供。先定位起点选择和八方向候选；如果你已有代码，我可以按行号帮你看一个局部位置。你想先看哪一小段逻辑？"
+
     if mode == "neutral":
         return (
             "代码、最终答案和详细实现结构不能提供。"
-            "可以只做一个局部修复判断：路径推进前先确认目标位置合法、字符匹配且没有被本路径使用。"
-            "路径推进和回退时，哪个状态最容易忘记恢复？"
+            "可以只做一个局部修复判断：先检查当前搜索停在了哪一行附近，再看它是否只验证了下一个字符。"
+            "需要先扩展哪一小段搜索逻辑？"
         )
 
     return (
         "我理解你想直接看到答案，但我不能提供代码、最终答案或详细实现结构。"
-        "可以先做一个很小的局部修复：每走一步前检查位置合法、字符匹配且没有在当前路径中用过。"
-        "你已经接近核心了，回退时哪个状态最需要恢复？"
+        "可以先做一个很小的局部修复：按行号找出当前搜索停在匹配第二个字符的位置，再让它继续处理后面的字符。"
+        "你想先让我帮你定位哪一行附近吗？"
     )
 
 
@@ -816,14 +821,45 @@ def normalize_tutor_reply(content: str) -> str:
     return re.sub(r"[ \t]{2,}", " ", " ".join(lines)).strip()
 
 
-def tutor_reply_fallback(tutor_mode: Any, scaffold_mode: Any, learner_state: dict[str, Any] | None = None) -> str:
+def learner_request_needs_high_support(message: Any) -> bool:
+    text = str(message or "").lower()
+    markers = [
+        "不会",
+        "卡住",
+        "不懂",
+        "好沮丧",
+        "还是不对",
+        "还是不会",
+        "提示代码",
+        "代码提示",
+        "少量代码",
+        "哪一行",
+        "第几行",
+        "行附近",
+        "stuck",
+        "do not know",
+        "don't know",
+        "some code",
+        "code hint",
+        "which line",
+    ]
+    return any(marker in text for marker in markers)
+
+
+def tutor_reply_fallback(
+    tutor_mode: Any,
+    scaffold_mode: Any,
+    learner_state: dict[str, Any] | None = None,
+    learner_request: Any = "",
+) -> str:
     mode = normalize_tutor_mode(tutor_mode)
     scaffold = normalize_scaffold_mode(scaffold_mode)
     state = learner_state if isinstance(learner_state, dict) else {}
     attempt_count = safe_int(state.get("attempt_count"))
     consecutive_failures = safe_int(state.get("consecutive_failed_attempts"))
+    message_high_support = learner_request_needs_high_support(learner_request)
 
-    if scaffold == "fixed_low" or (scaffold == "adaptive" and consecutive_failures < 3):
+    if scaffold == "fixed_low" or (scaffold == "adaptive" and consecutive_failures < 3 and not message_high_support):
         if scaffold == "adaptive" and attempt_count == 0:
             if mode == "neutral":
                 return "先把任务拆成从一个格子出发的一步选择。给定当前位置时，哪些相邻格可以作为下一个字符的候选？"
@@ -833,16 +869,36 @@ def tutor_reply_fallback(tutor_mode: Any, scaffold_mode: Any, learner_state: dic
         return "先抓住一个核心：路径搜索时状态要前进和回退都一致。你能检查当前路径里哪些信息必须同步变化，才不会重复使用同一格吗？"
 
     if mode == "neutral":
-        return "当前失败更像局部状态或边界处理问题。先把修复集中在一个点：读取邻居前确认行列仍在棋盘内，递归返回后立刻撤销本路径的访问标记。检查这两处是否成对出现。"
-    return "你已经有可调试的方向了，当前失败更像局部状态或边界处理问题。先只修一个点：读取邻居前确认行列在棋盘内，递归返回后立刻撤销本路径的访问标记。你可以检查这两处是否成对出现。"
+        return "当前问题更像局部搜索推进不够完整。先看匹配第一个字母之后的附近几行：如果只检查第二个字符，就无法覆盖更长单词。把这段改成能继续向后推进的局部搜索。"
+    return "你已经找到入口了，当前问题更像局部搜索推进不够完整。先看匹配第一个字母之后的附近几行：如果只检查第二个字符，就无法覆盖更长单词。把这段改成能继续向后推进的局部搜索。"
 
 
-def tutor_reply_needs_fallback(content: str, scaffold_mode: Any, learner_state: dict[str, Any] | None = None) -> bool:
+def scaffold_allows_tiny_code(
+    scaffold_mode: Any,
+    learner_state: dict[str, Any] | None = None,
+    learner_request: Any = "",
+) -> bool:
+    scaffold = normalize_scaffold_mode(scaffold_mode)
+    state = learner_state if isinstance(learner_state, dict) else {}
+    consecutive_failures = safe_int(state.get("consecutive_failed_attempts"))
+    return scaffold == "fixed_high" or (
+        scaffold == "adaptive" and (consecutive_failures >= 3 or learner_request_needs_high_support(learner_request))
+    )
+
+
+def tutor_reply_needs_fallback(
+    content: str,
+    scaffold_mode: Any,
+    learner_state: dict[str, Any] | None = None,
+    learner_request: Any = "",
+) -> bool:
     text = str(content or "")
     scaffold = normalize_scaffold_mode(scaffold_mode)
     state = learner_state if isinstance(learner_state, dict) else {}
     consecutive_failures = safe_int(state.get("consecutive_failed_attempts"))
-    low_support = scaffold == "fixed_low" or (scaffold == "adaptive" and consecutive_failures < 3)
+    message_high_support = learner_request_needs_high_support(learner_request)
+    low_support = scaffold == "fixed_low" or (scaffold == "adaptive" and consecutive_failures < 3 and not message_high_support)
+    tiny_code_allowed = scaffold_allows_tiny_code(scaffold, state, learner_request)
     question_count = text.count("？") + text.count("?")
     code_markers = [
         "```",
@@ -875,6 +931,20 @@ def tutor_reply_needs_fallback(content: str, scaffold_mode: Any, learner_state: 
         return True
     if low_support:
         return question_count != 1 or any(marker in text for marker in code_markers) or len(text) > 115
+
+    if tiny_code_allowed:
+        hard_markers = [
+            "```",
+            "`",
+            "def ",
+            "class ",
+            "import ",
+            "return ",
+            "完整",
+            "整段",
+            "复制",
+        ]
+        return len(text) > 170 or any(marker in text for marker in hard_markers)
 
     dangerous_code_detail = any(marker in text for marker in code_markers)
     return len(text) > 145 or dangerous_code_detail
@@ -1790,8 +1860,18 @@ class TutorHandler(BaseHTTPRequestHandler):
             scaffold_fallback_used = False
             if path == "/api/tutor":
                 content = normalize_tutor_reply(content)
-                if not guardrail_used and tutor_reply_needs_fallback(content, scaffold_mode, payload.get("_serverLearnerState")):
-                    content = tutor_reply_fallback(tutor_mode, scaffold_mode, payload.get("_serverLearnerState"))
+                if not guardrail_used and tutor_reply_needs_fallback(
+                    content,
+                    scaffold_mode,
+                    payload.get("_serverLearnerState"),
+                    learner_request,
+                ):
+                    content = tutor_reply_fallback(
+                        tutor_mode,
+                        scaffold_mode,
+                        payload.get("_serverLearnerState"),
+                        learner_request,
+                    )
                     scaffold_fallback_used = True
             entry = {
                 "id": f"{int(time.time() * 1000)}-{threading.get_ident()}",

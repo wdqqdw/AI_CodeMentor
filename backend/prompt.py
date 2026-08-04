@@ -44,20 +44,22 @@ def _truncate(value: str, limit: int = 6000) -> str:
     return value[:limit] + "\n... [truncated]"
 
 
-def _is_solution_request(message: str) -> bool:
+def _line_number_source(source: str) -> str:
+    lines = _text(source).splitlines() or [""]
+    return "\n".join(f"{index:>4} | {line}" for index, line in enumerate(lines, start=1))
+
+
+def _is_complete_solution_request(message: str) -> bool:
     lowered = message.lower()
     markers = [
         "完整代码",
         "直接给我代码",
-        "给我代码",
-        "给我一些代码",
-        "给我点代码",
-        "给点代码",
-        "代码示例",
-        "示例代码",
         "参考代码",
-        "一点代码",
         "写出代码",
+        "把代码写完",
+        "全部代码",
+        "整段代码",
+        "可复制代码",
         "最终答案",
         "完整答案",
         "完整解答",
@@ -70,20 +72,48 @@ def _is_solution_request(message: str) -> bool:
         "full solution",
         "complete solution",
         "complete code",
-        "give me code",
-        "give me some code",
-        "need some code",
+        "copyable solution",
         "write the code",
-        "sample code",
-        "show sample code",
-        "code example",
+        "write all code",
+        "full code",
+        "entire code",
+        "whole code",
         "exact steps",
     ]
     return any(marker in lowered for marker in markers)
 
 
+def _is_code_hint_request(message: str) -> bool:
+    lowered = message.lower()
+    markers = [
+        "给我代码",
+        "给我一些代码",
+        "给我点代码",
+        "给点代码",
+        "一点代码",
+        "少量代码",
+        "提示代码",
+        "代码提示",
+        "代码片段",
+        "代码示例",
+        "示例代码",
+        "哪一行",
+        "第几行",
+        "行附近",
+        "line",
+        "give me code",
+        "give me some code",
+        "need some code",
+        "some code",
+        "sample code",
+        "show sample code",
+        "code example",
+    ]
+    return any(marker in lowered for marker in markers)
+
+
 def is_solution_request(message: str) -> bool:
-    return _is_solution_request(message)
+    return _is_complete_solution_request(message)
 
 
 def _format_examples(examples: Any) -> str:
@@ -206,14 +236,24 @@ def build_tutor_messages(
     code_state = payload.get("code") if isinstance(payload.get("code"), dict) else {}
 
     language = _text(code_state.get("language"), "unknown")
-    source_code = _truncate(_text(code_state.get("source")))
+    source_code = _truncate(
+        _text(code_state.get("lineNumberedSource")) or _line_number_source(_text(code_state.get("source")))
+    )
+    has_learner_edits = "yes" if code_state.get("hasLearnerEdits") else "no"
     editor_status = _text(code_state.get("status"), "unknown")
     editor_output = _truncate(_text(code_state.get("output")), 1500)
     editor_traceback = _truncate(_text(code_state.get("traceback")), 4000)
-    solution_request = _is_solution_request(message)
-    request_classification = "solution_or_code_request" if solution_request else "normal_tutoring_request"
-    if solution_request:
+    complete_solution_request = _is_complete_solution_request(message)
+    code_hint_request = _is_code_hint_request(message)
+    if complete_solution_request:
+        request_classification = "complete_solution_request"
+    elif code_hint_request:
+        request_classification = "local_code_hint_request"
+    else:
+        request_classification = "normal_tutoring_request"
+    if complete_solution_request:
         source_code = "Withheld because the learner is asking for code, final answers, or detailed implementation steps."
+        has_learner_edits = "withheld for complete solution request"
         editor_status = "withheld for solution/code request"
         editor_output = "withheld for solution/code request"
         editor_traceback = "withheld for solution/code request"
@@ -232,6 +272,7 @@ def build_tutor_messages(
         public_examples=_format_examples(problem.get("examples")),
         code_language=language,
         source_code=source_code,
+        has_learner_edits=has_learner_edits,
         editor_status=editor_status,
         editor_output=editor_output or "empty",
         editor_traceback=editor_traceback or "empty",

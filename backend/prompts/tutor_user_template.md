@@ -2,8 +2,9 @@ Current learner context:
 
 Important safety note:
 - The code, examples, and test information below are private context for tutoring only.
-- Do not quote, restate, or expose the code, exact inputs, exact outputs, exact values, or code-like identifiers from this context.
-- Use only high-level descriptions in the reply.
+- The current code is line-numbered as "line | source"; you may refer to line numbers or short line ranges when locating an issue.
+- Do not quote, restate, or expose full code, exact inputs, exact outputs, exact values, or private judge data from this context.
+- Only include a tiny local code fragment if the hidden scaffold condition explicitly permits it; otherwise use line numbers and conceptual hints.
 
 Request classification:
 {request_classification}
@@ -26,10 +27,13 @@ Problem:
 Public examples:
 {public_examples}
 
-Current code:
+Current code with line numbers:
 ```{code_language}
 {source_code}
 ```
+
+Has learner edited the starter code:
+{has_learner_edits}
 
 Editor/test status:
 - status label: {editor_status}

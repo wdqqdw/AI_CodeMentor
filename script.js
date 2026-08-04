@@ -1523,6 +1523,12 @@ const buildTestStateContext = () => {
   };
 };
 
+const buildLineNumberedSource = (source) =>
+  String(source || "")
+    .split("\n")
+    .map((line, index) => `${String(index + 1).padStart(4, " ")} | ${line}`)
+    .join("\n");
+
 const buildTutorPayload = (message) => ({
   message,
   learning: {
@@ -1537,6 +1543,8 @@ const buildTutorPayload = (message) => ({
   code: {
     language: languageSelect.value,
     source: codeEditor.value,
+    lineNumberedSource: buildLineNumberedSource(codeEditor.value),
+    hasLearnerEdits: codeEditor.value.trim() !== (codeTemplates[languageSelect.value] || "").trim(),
     status: statusMessage.textContent.trim(),
     output: testOutput.textContent.trim(),
     traceback: latestTraceback,
