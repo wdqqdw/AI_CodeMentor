@@ -57,6 +57,8 @@ const backendBaseUrl =
   window.CODEMENTOR_CONFIG?.backendBaseUrl || tutorApiUrl.replace(/\/api\/tutor\/?$/, "");
 const activityApiUrl = window.CODEMENTOR_CONFIG?.activityApiUrl || `${backendBaseUrl}/api/activity`;
 const authStorageKey = "codementor.auth.v1";
+const codeDraftStoragePrefix = "codementor.codeDraft.v1";
+const codeDraftSaveDelayMs = 150;
 const problemStore = window.CODEMENTOR_PROBLEMS || {};
 const problemCatalog = problemStore.problemCatalog || [];
 const fallbackProblem =
@@ -93,6 +95,7 @@ let authSession = null;
 let activeProblemPath = problemStore.markdownProblemPath || "";
 let expandedCatalogCategory = "";
 let leftView = "lesson";
+let codeDraftSaveTimer = 0;
 const difficultyRank = { easy: 0, medium: 1, hard: 2 };
 
 const nowLabel = () =>
@@ -126,6 +129,65 @@ const setStatus = (text, state = "pass") => {
 const setOutput = (text, state = "") => {
   testOutput.className = `test-output ${state}`.trim();
   testOutput.textContent = text;
+};
+
+const safeStoragePart = (value) =>
+  String(value || "unknown")
+    .replace(/[^A-Za-z0-9_.:-]/g, "_")
+    .slice(0, 96);
+
+const getDraftAccountKey = () =>
+  safeStoragePart(authSession?.user?.username || authSession?.user?.id || "anonymous");
+
+const getDraftProblemKey = () =>
+  safeStoragePart(currentProblem?.id || activeProblemPath || problemStore.markdownProblemPath || "current");
+
+const getCodeDraftKey = (language = currentLanguage) =>
+  `${codeDraftStoragePrefix}:${getDraftAccountKey()}:${getDraftProblemKey()}:${safeStoragePart(language)}`;
+
+const readCodeDraft = (language = currentLanguage) => {
+  try {
+    return window.localStorage.getItem(getCodeDraftKey(language));
+  } catch (error) {
+    console.warn("Could not read code draft.", error);
+    return null;
+  }
+};
+
+const saveCodeDraft = (language = currentLanguage, value = codeEditor.value) => {
+  codeCache[language] = value;
+  try {
+    window.localStorage.setItem(getCodeDraftKey(language), value);
+  } catch (error) {
+    console.warn("Could not save code draft.", error);
+  }
+};
+
+const scheduleCodeDraftSave = () => {
+  window.clearTimeout(codeDraftSaveTimer);
+  codeDraftSaveTimer = window.setTimeout(() => {
+    saveCodeDraft();
+  }, codeDraftSaveDelayMs);
+};
+
+const flushCodeDraftSave = () => {
+  window.clearTimeout(codeDraftSaveTimer);
+  saveCodeDraft();
+};
+
+const getEditorValueForLanguage = (language = currentLanguage) => {
+  const draft = readCodeDraft(language);
+  if (draft !== null) {
+    return draft;
+  }
+
+  return codeCache[language] ?? codeTemplates[language] ?? "";
+};
+
+const restoreCodeDraft = (language = currentLanguage) => {
+  codeEditor.value = getEditorValueForLanguage(language);
+  codeCache[language] = codeEditor.value;
+  syncEditor();
 };
 
 const setActiveEditorTab = (view) => {
@@ -666,7 +728,8 @@ const renderProblem = () => {
     });
   }
 
-  codeEditor.value = codeTemplates[currentLanguage] || codeEditor.value;
+  codeEditor.value = getEditorValueForLanguage(currentLanguage);
+  codeCache[currentLanguage] = codeEditor.value;
 };
 
 const getCaseResult = (test) => latestResults.get(test.id);
@@ -1692,9 +1755,11 @@ if (expandReadingButton) {
 }
 
 languageSelect.addEventListener("change", () => {
+  flushCodeDraftSave();
   codeCache[currentLanguage] = codeEditor.value;
   currentLanguage = languageSelect.value;
-  codeEditor.value = codeCache[currentLanguage] || codeTemplates[currentLanguage] || "";
+  codeEditor.value = getEditorValueForLanguage(currentLanguage);
+  codeCache[currentLanguage] = codeEditor.value;
   setOutput(`${languageSelect.options[languageSelect.selectedIndex].text} mode ready`, "");
   setTraceback();
   setActiveEditorTab("code");
@@ -1854,6 +1919,7 @@ const completeAuth = async (session) => {
   saveAuthSession(session);
   updateAccountStatus();
   hideAuthGate();
+  restoreCodeDraft();
   try {
     await loadAccountHistory();
   } catch (error) {
@@ -1884,6 +1950,7 @@ const verifyStoredSession = async () => {
     saveAuthSession(authSession);
     updateAccountStatus();
     hideAuthGate();
+    restoreCodeDraft();
     await loadAccountHistory();
   } catch (error) {
     clearAuthSession();
@@ -2036,6 +2103,7 @@ authForm.addEventListener("submit", async (event) => {
 });
 
 logoutButton.addEventListener("click", async () => {
+  flushCodeDraftSave();
   const token = authSession?.token;
   if (token) {
     try {
@@ -2055,7 +2123,10 @@ logoutButton.addEventListener("click", async () => {
   setAuthMessage("Logged out.", "ok");
 });
 
-codeEditor.addEventListener("input", syncEditor);
+codeEditor.addEventListener("input", () => {
+  syncEditor();
+  scheduleCodeDraftSave();
+});
 codeEditor.addEventListener("scroll", syncScroll);
 codeEditor.addEventListener("keydown", (event) => {
   if (event.key === "Tab") {
@@ -2066,8 +2137,10 @@ codeEditor.addEventListener("keydown", (event) => {
     codeEditor.value = `${codeEditor.value.slice(0, start)}${tabText}${codeEditor.value.slice(end)}`;
     codeEditor.selectionStart = codeEditor.selectionEnd = start + tabText.length;
     syncEditor();
+    scheduleCodeDraftSave();
   }
 });
+window.addEventListener("beforeunload", flushCodeDraftSave);
 
 const hydrateInitialTutorMessage = () => {
   const legacyAvatar = chatThread.querySelector(".message.tutor .avatar");
