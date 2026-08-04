@@ -2,7 +2,7 @@
 
 AI_CodeMentor is an AI-assisted coding practice prototype. The current public page focuses on a single deeper exercise, **Boggle Solver / 棋盘单词搜索**, with a knowledge-first lesson view, a Python coding panel, testcase feedback, a full Traceback panel for runtime errors, and an AI Tutor chat panel.
 
-Last updated: 2026-08-03
+Last updated: 2026-08-04
 
 ## Quick Links
 
@@ -18,7 +18,8 @@ Last updated: 2026-08-03
 
 - Frontend hosting: GitHub Pages.
 - Main exercise: Boggle Solver.
-- Default entry view: Knowledge. Learners first see a roughly 10-minute prerequisite lesson on 2D grids, DFS, backtracking, and prefix pruning, then switch to Practice from the top-left segmented control.
+- Default entry view: Knowledge. Learners first see a roughly 10-minute prerequisite lesson on 2D grids, DFS, backtracking, prefix pruning, and how/when to use AI Tutor, then switch to Practice from the top-left segmented control.
+- Practice statement language: bilingual English/Chinese problem description for Boggle Solver.
 - AI backend: AutoDL server running a local Python service on port `8787`.
 - Public backend access: Cloudflare Tunnel.
 - Model configured by the backend: `DeepSeek-V4-Pro`.

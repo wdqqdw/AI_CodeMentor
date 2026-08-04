@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CodeMentor AI</title>
-    <link rel="stylesheet" href="./styles.css?v=case-errors-1" />
+    <link rel="stylesheet" href="./styles.css?v=knowledge-bilingual-1" />
   </head>
   <body>
     <div class="app-shell">
@@ -42,13 +42,48 @@
               <h1 id="lesson-title">Boggle Solver 预备知识</h1>
               <p>
                 这页用于做题前快速建立共同语言。你会先理解二维棋盘、相邻格移动、DFS、回溯和前缀剪枝，
-                再进入 Practice 页面写自己的解法。
+                再进入 Practice 页面写自己的解法。阅读时不用记住某一种标准写法，重点是弄清楚“状态如何变化”和“什么时候停止搜索”。
               </p>
             </div>
 
-            <section class="lesson-section">
+            <section class="lesson-section lesson-tutor-guide">
               <div class="lesson-section-heading">
                 <span>1</span>
+                <div>
+                  <h2>怎样使用右侧 AI Tutor</h2>
+                  <p>
+                    你可以在学习知识、写代码、运行测试和阅读报错时随时向右侧 AI Tutor 提问。它的目标不是替你完成题目，
+                    而是帮助你把问题拆小、定位卡点，并引导你自己做出下一步判断。
+                  </p>
+                </div>
+              </div>
+              <div class="tutor-guide-grid">
+                <article>
+                  <strong>什么时候适合问</strong>
+                  <p>看不懂题意、不会设计递归状态、测试只过一部分、Traceback 看不懂、或者想确认下一步优化方向时，都可以提问。</p>
+                </article>
+                <article>
+                  <strong>模型能看到什么</strong>
+                  <p>它会收到当前题目、你正在看的页面类型、编辑器里的代码、语言、测试通过率、公开提示和最新报错信息。</p>
+                </article>
+                <article>
+                  <strong>模型看不到什么</strong>
+                  <p>它不会看到隐藏测试的具体输入和答案，也不会看到你的密码、后台私有文件或没有写进页面/对话的外部信息。</p>
+                </article>
+                <article>
+                  <strong>模型会怎么回答</strong>
+                  <p>它会给提示、解释概念、提出检查问题和调试方向；它不会直接输出完整代码、最终答案或逐行可复制的实现。</p>
+                </article>
+              </div>
+              <p class="lesson-note">
+                推荐提问方式：先说明你目前的想法，再指出卡住的位置。例如“我会枚举起点，但不知道 used 什么时候恢复”，
+                或者“我只过了一半测试，怀疑是对角线/重复格处理错了”。
+              </p>
+            </section>
+
+            <section class="lesson-section">
+              <div class="lesson-section-heading">
+                <span>2</span>
                 <div>
                   <h2>题目要解决什么</h2>
                   <p>
@@ -115,7 +150,7 @@
 
             <section class="lesson-section">
               <div class="lesson-section-heading">
-                <span>2</span>
+                <span>3</span>
                 <div>
                   <h2>DFS：沿着一条路先走到底</h2>
                   <p>
@@ -130,11 +165,15 @@
                 <li><strong>继续深入：</strong>如果还没完成这个词，就去 8 个邻居里尝试下一步。</li>
                 <li><strong>判断成功：</strong>当所有字母都按规则匹配完，就找到了这个词。</li>
               </ol>
+              <p class="lesson-note">
+                对初学者来说，DFS 可以先想成“站在一个格子上问三个问题”：当前位置是否合法？这个格子能不能用？
+                当前字母是否匹配？三个问题都通过后，才继续尝试下一步。
+              </p>
             </section>
 
             <section class="lesson-section">
               <div class="lesson-section-heading">
-                <span>3</span>
+                <span>4</span>
                 <div>
                   <h2>回溯：走错了要恢复现场</h2>
                   <p>
@@ -156,7 +195,7 @@
 
             <section class="lesson-section">
               <div class="lesson-section-heading">
-                <span>4</span>
+                <span>5</span>
                 <div>
                   <h2>从逐词搜索到前缀剪枝</h2>
                   <p>
@@ -179,11 +218,42 @@
                   <p>棋盘较大、单词很多、共享开头很多时，剪枝能明显减少搜索分支。</p>
                 </article>
               </div>
+              <p class="lesson-note">
+                这道题允许你先写朴素版本来理解规则；但后面的测试会考察时间复杂度。若发现答案正确但运行很慢，
+                可以把“逐个单词搜索”改成“在棋盘上走路径，同时查这些路径是不是某些单词的前缀”。
+              </p>
             </section>
 
             <section class="lesson-section">
               <div class="lesson-section-heading">
-                <span>5</span>
+                <span>6</span>
+                <div>
+                  <h2>复杂度直觉：为什么朴素方法会慢</h2>
+                  <p>
+                    如果对每个候选词都从每个格子重新 DFS，一组共享前缀的单词会反复走同样的前几步。
+                    例如许多单词都以 <code>pre</code>、<code>sea</code> 或 <code>aaa</code> 开头时，朴素搜索会重复探索大量相同路径。
+                  </p>
+                </div>
+              </div>
+              <div class="concept-grid">
+                <article>
+                  <h3>正确性优先</h3>
+                  <p>先保证 8 个方向、边界、visited 和去重都正确。否则优化会掩盖基础错误。</p>
+                </article>
+                <article>
+                  <h3>再看速度</h3>
+                  <p>如果小 case 通过、大 case 超时，通常说明搜索分支太多，需要用前缀剪枝减少无效尝试。</p>
+                </article>
+                <article>
+                  <h3>调试方式</h3>
+                  <p>运行后先看 Testcases 的难度梯队，再打开 Traceback 或向 Tutor 描述失败现象。</p>
+                </article>
+              </div>
+            </section>
+
+            <section class="lesson-section">
+              <div class="lesson-section-heading">
+                <span>7</span>
                 <div>
                   <h2>做题前检查表</h2>
                   <p>开始写代码前，先确认自己能回答这些问题。回答越清楚，后面的调试成本越低。</p>
@@ -201,7 +271,7 @@
 
             <section class="lesson-section">
               <div class="lesson-section-heading">
-                <span>6</span>
+                <span>8</span>
                 <div>
                   <h2>常见错误</h2>
                   <p>这道题的难点不在语法，而在状态管理。下面这些错误很适合用测试用例逐步排查。</p>
@@ -472,7 +542,7 @@ class Solution:
         </form>
       </section>
     </div>
-    <script src="./problems.js?v=problem-catalog-13"></script>
+    <script src="./problems.js?v=knowledge-bilingual-1"></script>
     <script>
       window.CODEMENTOR_CONFIG = {
         backendBaseUrl: "https://frequent-reflection-combinations-raises.trycloudflare.com",

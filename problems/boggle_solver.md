@@ -14,6 +14,8 @@ visibleTestCount: 0
 
 ## Description
 
+**English description**
+
 You are building a small Boggle-style word finder. You receive a 2D board of lowercase letters and a dictionary `words`. Your task is to return every dictionary word that can be formed by walking through adjacent cells on the board.
 
 What counts as a valid word path:
@@ -38,6 +40,35 @@ Common mistakes to watch for:
 - Returning duplicate words.
 - Allowing a path to reuse the same cell.
 - Revealing words in the wrong format, such as returning coordinates instead of strings.
+
+**中文说明**
+
+你要实现一个简化版 Boggle 单词搜索器。输入包含一个小写字母组成的二维棋盘 `board`，以及一个候选单词列表 `words`。你的任务是返回所有能够在棋盘上通过“相邻移动”拼出来的候选单词。
+
+一个合法的单词路径需要满足：
+
+- 一个单词可以从棋盘上的任意格子开始。
+- 每一步可以走到当前格子的 8 个相邻位置之一：上、下、左、右，以及四个对角线方向。
+- 在拼同一个单词的一条路径中，同一个棋盘格最多只能使用一次。
+- 当一个单词搜索结束或放弃后，之前用过的格子会重新变为可用，可以用于搜索另一个单词。
+
+你的函数需要返回：
+
+- 返回所有能在棋盘上形成的字典词，每个单词只返回一次。
+- 输出顺序不重要。
+- 每个棋盘格只表示一个普通字符。本题没有真实 Boggle 中特殊的 `Qu` 方块规则。
+
+这道题比普通网格 DFS 更深一些。直接的方法是对 `words` 中的每个单词单独搜索一遍，这样比较容易写出第一版正确解；但当很多单词共享前缀时，这种方法会重复探索大量路径。更高效的思路通常是先用 `words` 构建前缀树 Trie，再从棋盘每个格子开始 DFS；如果当前路径已经不是任何候选词的前缀，就立刻停止继续搜索。
+
+常见错误包括：
+
+- 只检查 4 个方向，漏掉对角线。
+- 回溯时忘记取消 visited 标记。
+- 同一个答案单词返回多次。
+- 在同一条单词路径中重复使用同一个格子。
+- 返回格式错误，例如返回坐标、路径或布尔值，而不是字符串列表。
+
+使用 AI Tutor 时，你可以描述自己的想法、当前代码、测试通过情况或 Traceback。Tutor 可以帮助你定位概念和调试方向，但不会直接给出完整代码或最终答案，也不会透露隐藏测试的具体输入和输出。
 
 ## Visual Examples
 
