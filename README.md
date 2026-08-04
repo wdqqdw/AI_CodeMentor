@@ -2,7 +2,7 @@
 
 AI_CodeMentor is an AI-assisted coding practice prototype. The current public page focuses on a single deeper exercise, **Boggle Solver / 棋盘单词搜索**, with a knowledge-first lesson view, a Python coding panel, testcase feedback, a full Traceback panel for runtime errors, and an AI Tutor chat panel.
 
-Last updated: 2026-08-04
+Last updated: 2026-08-05
 
 ## Quick Links
 
@@ -33,7 +33,7 @@ Last updated: 2026-08-04
 - Runtime error display: enabled. The editor has a dedicated `Traceback` tab that shows full per-case runtime errors instead of truncating them in the bottom status strip. A single case error does not stop the remaining cases from running.
 - Editor draft persistence: enabled. The browser stores code drafts locally by account, problem, and language so refreshing the page does not erase a learner's current code.
 - Run/Submit busy state: enabled. While tests are executing, both execution buttons are disabled, the active button shows `Running...` or `Submitting...`, and the status/output areas show progress text.
-- Python execution isolation: enabled. Python submissions run inside `pyodide-worker.js` instead of the browser main thread, using Pyodide `v0.28.2`, with per-case hard timeouts and a repeated-timeout guard so exponential DFS attempts cannot freeze the page.
+- Python execution isolation: enabled. Python submissions run inside `pyodide-worker.js` instead of the browser main thread, using Pyodide `v0.28.2`, with per-case hard timeouts, per-case time-limit checks, and a repeated-timeout guard so exponential DFS attempts cannot freeze the page.
 - Structured activity logging: enabled for Run, Submit, and AI Tutor chat events.
 - Learner-facing history/activity APIs: sanitized. Students can reload their own conversation and learning records, but hidden scaffold metadata, raw prompts, full message arrays, and server learner-state summaries are stripped before response.
 - Activity dashboard: account-scoped login page with summary cards, a shared scroll area containing the accuracy-over-interactions line chart and an auto-expanding staggered vertical timeline.

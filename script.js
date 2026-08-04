@@ -1348,7 +1348,8 @@ const runTests = async (tests) => {
         expected: getExpected(test),
       });
 
-      consecutiveTimeouts = runtimeError.name === "TimeoutError" ? consecutiveTimeouts + 1 : 0;
+      const isTimeoutLikeError = runtimeError.name === "TimeoutError" || runtimeError.name === "TimeLimitError";
+      consecutiveTimeouts = isTimeoutLikeError ? consecutiveTimeouts + 1 : 0;
       if (language === "python" && consecutiveTimeouts >= 2 && index < tests.length - 1) {
         const guardMessage =
           "Stopped after repeated Python timeouts to keep the page responsive. Try shared-prefix pruning before submitting again.";
