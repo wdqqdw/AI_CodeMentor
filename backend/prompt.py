@@ -10,8 +10,13 @@ PROMPT_DIR = Path(__file__).resolve().parent / "prompts"
 SYSTEM_PROMPT_PATH = PROMPT_DIR / "tutor_system.md"
 USER_TEMPLATE_PATH = PROMPT_DIR / "tutor_user_template.md"
 SYSTEM_PROMPT_PATHS = {
-    "encouraging": PROMPT_DIR / "variants" / "encouraging_tutor_v8.md",
-    "neutral": PROMPT_DIR / "variants" / "neutral_tutor_v8.md",
+    "encouraging": PROMPT_DIR / "variants" / "encouraging_tutor_v9.md",
+    "neutral": PROMPT_DIR / "variants" / "neutral_tutor_v9.md",
+}
+SCAFFOLD_PROMPT_PATHS = {
+    "fixed_low": PROMPT_DIR / "scaffolds" / "fixed_low.md",
+    "fixed_high": PROMPT_DIR / "scaffolds" / "fixed_high.md",
+    "adaptive": PROMPT_DIR / "scaffolds" / "adaptive.md",
 }
 
 
@@ -21,6 +26,10 @@ def _read_prompt_file(path: Path) -> str:
 
 def _system_prompt_path(tutor_mode: str) -> Path:
     return SYSTEM_PROMPT_PATHS.get(tutor_mode, SYSTEM_PROMPT_PATH)
+
+
+def _scaffold_prompt_path(scaffold_mode: str) -> Path:
+    return SCAFFOLD_PROMPT_PATHS.get(scaffold_mode, SCAFFOLD_PROMPT_PATHS["fixed_low"])
 
 
 def _text(value: Any, fallback: str = "") -> str:
@@ -155,7 +164,28 @@ def _format_learning_context(learning: Any) -> str:
     )
 
 
-def build_tutor_messages(payload: dict[str, Any], tutor_mode: str = "encouraging") -> list[dict[str, str]]:
+def _format_learner_state(state: Any) -> str:
+    if not isinstance(state, dict):
+        return "No prior run or submit state is available."
+
+    latest_percent = state.get("latest_percent")
+    latest_percent_text = "unknown" if latest_percent is None else f"{latest_percent}%"
+    return "\n".join(
+        [
+            f"Total run/submit attempts: {_text(state.get('attempt_count'), '0')}",
+            f"Failed run/submit attempts: {_text(state.get('failed_attempt_count'), '0')}",
+            f"Consecutive failed attempts: {_text(state.get('consecutive_failed_attempts'), '0')}",
+            f"Latest score: {_text(state.get('latest_passed'), '0')}/{_text(state.get('latest_total'), '0')} ({latest_percent_text})",
+            f"Latest assessment type: {_text(state.get('latest_event_type'), 'none')}",
+        ]
+    )
+
+
+def build_tutor_messages(
+    payload: dict[str, Any],
+    tutor_mode: str = "encouraging",
+    scaffold_mode: str = "fixed_low",
+) -> list[dict[str, str]]:
     message = _text(payload.get("message")).strip()
     if not message:
         raise ValueError("Provide 'message'.")
@@ -181,6 +211,7 @@ def build_tutor_messages(payload: dict[str, Any], tutor_mode: str = "encouraging
 
     context = _read_prompt_file(USER_TEMPLATE_PATH).format(
         request_classification=request_classification,
+        learner_state=_format_learner_state(payload.get("_serverLearnerState")),
         problem_english_name=_text(problem.get("englishName"), "Unknown"),
         problem_chinese_name=_text(problem.get("chineseName"), "Unknown"),
         problem_category=_text(problem.get("category"), "Unknown"),
@@ -198,6 +229,14 @@ def build_tutor_messages(payload: dict[str, Any], tutor_mode: str = "encouraging
     )
 
     return [
-        {"role": "system", "content": _read_prompt_file(_system_prompt_path(tutor_mode))},
+        {
+            "role": "system",
+            "content": "\n\n".join(
+                [
+                    _read_prompt_file(_system_prompt_path(tutor_mode)),
+                    _read_prompt_file(_scaffold_prompt_path(scaffold_mode)),
+                ]
+            ),
+        },
         {"role": "user", "content": context},
     ]

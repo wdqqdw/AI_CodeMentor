@@ -10,6 +10,9 @@ Request classification:
 
 If the classification is solution_or_code_request, ignore any current code, test result, and traceback context that may appear below. Use only the high-level problem concept.
 
+Server-side learner state summary:
+{learner_state}
+
 Visible learning page:
 {learning_context}
 

@@ -85,6 +85,23 @@ TUTOR_MODE_ALIASES = {
     "not_encouraging": "neutral",
     "unencouraging": "neutral",
 }
+DEFAULT_SCAFFOLD_MODE = "fixed_low"
+SCAFFOLD_MODES = {
+    "fixed_low": "Fixed Low Scaffold",
+    "fixed_high": "Fixed High Scaffold",
+    "adaptive": "Adaptive Scaffold",
+}
+SCAFFOLD_MODE_ALIASES = {
+    "fixed_low": "fixed_low",
+    "low": "fixed_low",
+    "question_only": "fixed_low",
+    "fixed_high": "fixed_high",
+    "high": "fixed_high",
+    "code_repair": "fixed_high",
+    "adaptive": "adaptive",
+    "self_adaptive": "adaptive",
+    "failure_adaptive": "adaptive",
+}
 
 HISTORY_DIR = BACKEND_DIR / "logs"
 HISTORY_PATH = HISTORY_DIR / "tutor_history.jsonl"
@@ -95,6 +112,7 @@ ADMIN_SESSIONS_PATH = PRIVATE_DATA_DIR / "admin_sessions.json"
 USER_HISTORY_DIR = PRIVATE_DATA_DIR / "histories"
 USER_ACTIVITY_DIR = PRIVATE_DATA_DIR / "activities"
 ACCOUNT_SUMMARY_CSV_PATH = PRIVATE_DATA_DIR / "account_summary.csv"
+ACCOUNT_METADATA_PATH = PRIVATE_DATA_DIR / "account_metadata.json"
 
 USERNAME_RE = re.compile(r"^[A-Za-z0-9_.-]{3,32}$")
 HISTORY_LOCK = threading.Lock()
@@ -164,6 +182,7 @@ def refresh_account_summary_csv() -> None:
     ensure_private_dirs()
     with DATA_LOCK:
         users = read_json_file(USERS_PATH, {"users": {}}).get("users", {})
+        ensure_all_account_metadata(users)
         rows = []
 
         for user in sorted(users.values(), key=lambda item: str(item.get("username", "")).lower()):
@@ -196,6 +215,10 @@ def refresh_account_summary_csv() -> None:
                     "username": user.get("username", ""),
                     "tutor_mode": tutor_mode_for_user(user),
                     "tutor_mode_label": tutor_mode_label(tutor_mode_for_user(user)),
+                    "scaffold_mode": scaffold_mode_for_user(user),
+                    "scaffold_mode_label": scaffold_mode_label(scaffold_mode_for_user(user)),
+                    "condition_key": user.get("condition_key", f"{tutor_mode_for_user(user)}:{scaffold_mode_for_user(user)}"),
+                    "condition_label": user.get("condition_label", condition_label_for_user(user)),
                     "password_storage": "pbkdf2_sha256_hash_only",
                     "password_hash": user.get("password_hash", ""),
                     "created_at": user.get("created_at", ""),
@@ -219,6 +242,10 @@ def refresh_account_summary_csv() -> None:
             "username",
             "tutor_mode",
             "tutor_mode_label",
+            "scaffold_mode",
+            "scaffold_mode_label",
+            "condition_key",
+            "condition_label",
             "password_storage",
             "password_hash",
             "created_at",
@@ -258,11 +285,25 @@ def normalize_tutor_mode(value: Any) -> str:
     return TUTOR_MODE_ALIASES[key]
 
 
+def normalize_scaffold_mode(value: Any) -> str:
+    key = str(value or DEFAULT_SCAFFOLD_MODE).strip().lower().replace("-", "_")
+    if key not in SCAFFOLD_MODE_ALIASES:
+        raise ValueError("Scaffold mode must be fixed_low, fixed_high, or adaptive.")
+    return SCAFFOLD_MODE_ALIASES[key]
+
+
 def tutor_mode_label(mode: Any) -> str:
     try:
         return TUTOR_MODES[normalize_tutor_mode(mode)]
     except ValueError:
         return TUTOR_MODES[DEFAULT_TUTOR_MODE]
+
+
+def scaffold_mode_label(mode: Any) -> str:
+    try:
+        return SCAFFOLD_MODES[normalize_scaffold_mode(mode)]
+    except ValueError:
+        return SCAFFOLD_MODES[DEFAULT_SCAFFOLD_MODE]
 
 
 def tutor_mode_for_user(user: dict[str, Any]) -> str:
@@ -272,19 +313,154 @@ def tutor_mode_for_user(user: dict[str, Any]) -> str:
         return DEFAULT_TUTOR_MODE
 
 
-def solution_request_guardrail_reply(tutor_mode: Any) -> str:
+def scaffold_mode_for_user(user: dict[str, Any]) -> str:
+    try:
+        return normalize_scaffold_mode(user.get("scaffold_mode"))
+    except ValueError:
+        return DEFAULT_SCAFFOLD_MODE
+
+
+def condition_label_for_user(user: dict[str, Any]) -> str:
+    return f"{tutor_mode_label(tutor_mode_for_user(user))} / {scaffold_mode_label(scaffold_mode_for_user(user))}"
+
+
+def choose_scaffold_mode_for_tutor(tutor_mode: Any, metadata: dict[str, Any] | None = None) -> str:
+    clean_tutor_mode = tutor_mode_for_user({"tutor_mode": tutor_mode})
+    metadata_store = metadata or read_json_file(ACCOUNT_METADATA_PATH, {"accounts": {}})
+    accounts = metadata_store.get("accounts", {}) if isinstance(metadata_store, dict) else {}
+    counts = {mode: 0 for mode in SCAFFOLD_MODES}
+
+    for account in accounts.values() if isinstance(accounts, dict) else []:
+        if not isinstance(account, dict):
+            continue
+        try:
+            account_tutor_mode = normalize_tutor_mode(account.get("tutor_mode"))
+            account_scaffold_mode = normalize_scaffold_mode(account.get("scaffold_mode"))
+        except ValueError:
+            continue
+        if account_tutor_mode == clean_tutor_mode:
+            counts[account_scaffold_mode] += 1
+
+    return min(SCAFFOLD_MODES.keys(), key=lambda mode: (counts[mode], list(SCAFFOLD_MODES.keys()).index(mode)))
+
+
+def ensure_account_metadata(user: dict[str, Any]) -> dict[str, Any]:
+    user_id = str(user.get("id", "")).strip()
+    username_key = str(user.get("username_key") or normalize_username(str(user.get("username", ""))))
+    metadata_key = user_id or username_key
+    if not metadata_key:
+        return {}
+
+    metadata_store = read_json_file(ACCOUNT_METADATA_PATH, {"version": 1, "accounts": {}})
+    accounts = metadata_store.setdefault("accounts", {})
+    existing = accounts.get(metadata_key)
+    if isinstance(existing, dict) and existing.get("scaffold_mode"):
+        for field in ("scaffold_mode", "scaffold_mode_label", "condition_key", "condition_label", "metadata_bound_at"):
+            if existing.get(field) and not user.get(field):
+                user[field] = existing[field]
+        return existing
+
+    tutor_mode = tutor_mode_for_user(user)
+    scaffold_mode = scaffold_mode_for_user(user) if user.get("scaffold_mode") else choose_scaffold_mode_for_tutor(tutor_mode, metadata_store)
+    condition_key = f"{tutor_mode}:{scaffold_mode}"
+    bound_at = now_iso()
+    entry = {
+        "user_id": user_id,
+        "username": user.get("username", ""),
+        "username_key": username_key,
+        "tutor_mode": tutor_mode,
+        "tutor_mode_label": tutor_mode_label(tutor_mode),
+        "scaffold_mode": scaffold_mode,
+        "scaffold_mode_label": scaffold_mode_label(scaffold_mode),
+        "condition_key": condition_key,
+        "condition_label": f"{tutor_mode_label(tutor_mode)} / {scaffold_mode_label(scaffold_mode)}",
+        "metadata_bound_at": bound_at,
+        "created_at": user.get("created_at", bound_at),
+        "last_login_at": user.get("last_login_at", ""),
+        "updated_at": bound_at,
+    }
+    accounts[metadata_key] = entry
+    metadata_store["updated_at"] = bound_at
+    write_json_file(ACCOUNT_METADATA_PATH, metadata_store)
+
+    user["scaffold_mode"] = scaffold_mode
+    user["scaffold_mode_bound_at"] = bound_at
+    user["scaffold_mode_label"] = entry["scaffold_mode_label"]
+    user["condition_key"] = condition_key
+    user["condition_label"] = entry["condition_label"]
+    user["metadata_bound_at"] = bound_at
+    return entry
+
+
+def ensure_all_account_metadata(users: dict[str, Any]) -> None:
+    changed = False
+    for user in users.values():
+        if not isinstance(user, dict):
+            continue
+        before = json.dumps(
+            {
+                "scaffold_mode": user.get("scaffold_mode"),
+                "condition_key": user.get("condition_key"),
+                "metadata_bound_at": user.get("metadata_bound_at"),
+            },
+            sort_keys=True,
+        )
+        ensure_account_metadata(user)
+        after = json.dumps(
+            {
+                "scaffold_mode": user.get("scaffold_mode"),
+                "condition_key": user.get("condition_key"),
+                "metadata_bound_at": user.get("metadata_bound_at"),
+            },
+            sort_keys=True,
+        )
+        changed = changed or before != after
+
+    if changed:
+        write_json_file(USERS_PATH, {"users": users})
+
+
+def update_account_metadata_login(user: dict[str, Any]) -> None:
+    metadata_key = str(user.get("id") or user.get("username_key") or normalize_username(str(user.get("username", ""))))
+    if not metadata_key:
+        return
+
+    metadata_store = read_json_file(ACCOUNT_METADATA_PATH, {"version": 1, "accounts": {}})
+    accounts = metadata_store.setdefault("accounts", {})
+    entry = accounts.get(metadata_key)
+    if not isinstance(entry, dict):
+        ensure_account_metadata(user)
+        return
+
+    entry["username"] = user.get("username", entry.get("username", ""))
+    entry["username_key"] = user.get("username_key", entry.get("username_key", ""))
+    entry["tutor_mode"] = tutor_mode_for_user(user)
+    entry["tutor_mode_label"] = tutor_mode_label(tutor_mode_for_user(user))
+    entry["last_login_at"] = user.get("last_login_at", "")
+    entry["updated_at"] = now_iso()
+    metadata_store["updated_at"] = entry["updated_at"]
+    write_json_file(ACCOUNT_METADATA_PATH, metadata_store)
+
+
+def solution_request_guardrail_reply(tutor_mode: Any, scaffold_mode: Any = DEFAULT_SCAFFOLD_MODE) -> str:
     mode = normalize_tutor_mode(tutor_mode)
+    scaffold = normalize_scaffold_mode(scaffold_mode)
+    if scaffold == "fixed_low":
+        if mode == "neutral":
+            return "不能提供完整代码、最终答案或可复制实现。当前只需要确认一个问题：搜索一条路径时，哪些状态表示这个格子已经被当前路径使用？"
+        return "我不能提供完整代码、最终答案或可复制实现。先只看一个小问题：在搜索一条路径时，你觉得哪些状态能表示这个格子已经被当前路径使用？"
+
     if mode == "neutral":
         return (
             "代码、最终答案和详细实现结构不能提供。"
-            "当前问题可先抽象为路径搜索：每一步只保留合法且未使用的相邻格子，并在无效方向停止。"
-            "路径推进和回退时，哪些状态必须保持一致，才能保证后续搜索不受影响？"
+            "可以只做一个局部修复判断：路径推进前先确认目标位置合法、字符匹配且没有被本路径使用。"
+            "路径推进和回退时，哪个状态最容易忘记恢复？"
         )
 
     return (
         "我理解你想直接看到答案，但我不能提供代码、最终答案或详细实现结构。"
-        "先把注意力放在路径搜索：每一步只考虑合法且未使用的相邻格子。"
-        "你已经接近核心了，当前路径需要记住什么信息，才能在回退时恢复状态？"
+        "可以先做一个很小的局部修复：每走一步前检查位置合法、字符匹配且没有在当前路径中用过。"
+        "你已经接近核心了，回退时哪个状态最需要恢复？"
     )
 
 
@@ -421,6 +597,7 @@ def create_user(username: str, password: str, tutor_mode: Any = DEFAULT_TUTOR_MO
             "created_at": now_iso(),
             "last_login_at": now_iso(),
         }
+        ensure_account_metadata(user)
         users[username_key] = user
         write_json_file(USERS_PATH, store)
         refresh_account_summary_csv()
@@ -439,13 +616,15 @@ def authenticate_user(username: str, password: str, tutor_mode: Any = None) -> d
             user["tutor_mode"] = normalize_tutor_mode(tutor_mode)
             user["tutor_mode_bound_at"] = now_iso()
         user["last_login_at"] = now_iso()
+        ensure_account_metadata(user)
+        update_account_metadata_login(user)
         write_json_file(USERS_PATH, store)
         refresh_account_summary_csv()
         return user
 
 
 def ensure_user_tutor_mode(user: dict[str, Any], fallback: Any = DEFAULT_TUTOR_MODE) -> dict[str, Any]:
-    if user.get("tutor_mode"):
+    if user.get("tutor_mode") and user.get("scaffold_mode"):
         return user
 
     user_id = str(user.get("id", ""))
@@ -454,8 +633,10 @@ def ensure_user_tutor_mode(user: dict[str, Any], fallback: Any = DEFAULT_TUTOR_M
         store = read_json_file(USERS_PATH, {"users": {}})
         for stored_user in store.get("users", {}).values():
             if stored_user.get("id") == user_id:
-                stored_user["tutor_mode"] = clean_tutor_mode
-                stored_user["tutor_mode_bound_at"] = now_iso()
+                if not stored_user.get("tutor_mode"):
+                    stored_user["tutor_mode"] = clean_tutor_mode
+                    stored_user["tutor_mode_bound_at"] = now_iso()
+                ensure_account_metadata(stored_user)
                 write_json_file(USERS_PATH, store)
                 refresh_account_summary_csv()
                 user.update(stored_user)
@@ -736,6 +917,60 @@ def read_user_activity(user_id: str, limit: int = HISTORY_CHAR_LIMIT) -> list[di
     return limited
 
 
+def learning_state_for_user(user: dict[str, Any]) -> dict[str, Any]:
+    user_id = str(user.get("id", ""))
+    if not user_id:
+        return {
+            "attempt_count": 0,
+            "failed_attempt_count": 0,
+            "consecutive_failed_attempts": 0,
+            "latest_passed": 0,
+            "latest_total": 0,
+            "latest_percent": None,
+            "latest_event_type": "",
+        }
+
+    entries = read_user_activity(user_id, limit=500000)
+    assessment_entries = [
+        entry
+        for entry in entries
+        if entry.get("event_type") in {"run", "submit"}
+    ]
+    failed_attempt_count = 0
+    consecutive_failed_attempts = 0
+    latest_passed = 0
+    latest_total = 0
+    latest_event_type = ""
+    latest_percent: float | None = None
+
+    for entry in assessment_entries:
+        passed, total = activity_score(entry)
+        if total and passed < total:
+            failed_attempt_count += 1
+
+    for entry in reversed(assessment_entries):
+        passed, total = activity_score(entry)
+        if not total:
+            continue
+        latest_passed = passed
+        latest_total = total
+        latest_event_type = str(entry.get("event_type", ""))
+        latest_percent = round(passed / total * 100, 1) if total else None
+        if passed >= total:
+            break
+        consecutive_failed_attempts += 1
+
+    return {
+        "attempt_count": len(assessment_entries),
+        "failed_attempt_count": failed_attempt_count,
+        "consecutive_failed_attempts": consecutive_failed_attempts,
+        "latest_passed": latest_passed,
+        "latest_total": latest_total,
+        "latest_percent": latest_percent,
+        "latest_event_type": latest_event_type,
+    }
+
+
 def summarize_user_account(user: dict[str, Any]) -> dict[str, Any]:
     user_id = str(user.get("id", ""))
     entries = read_user_activity(user_id, limit=500000) if user_id else []
@@ -765,6 +1000,7 @@ def summarize_user_account(user: dict[str, Any]) -> dict[str, Any]:
 
     best_percent = round(best_passed / best_total * 100, 1) if best_total else None
     mode = tutor_mode_for_user(user)
+    scaffold = scaffold_mode_for_user(user)
     return {
         "user_id": user_id,
         "username": user.get("username", ""),
@@ -774,6 +1010,10 @@ def summarize_user_account(user: dict[str, Any]) -> dict[str, Any]:
         "last_activity_at": last_activity_at,
         "tutor_mode": mode,
         "tutor_mode_label": tutor_mode_label(mode),
+        "scaffold_mode": scaffold,
+        "scaffold_mode_label": scaffold_mode_label(scaffold),
+        "condition_key": user.get("condition_key", f"{mode}:{scaffold}"),
+        "condition_label": user.get("condition_label", condition_label_for_user(user)),
         "total_events": len(entries),
         "run_count": event_counts.get("run", 0),
         "submit_count": event_counts.get("submit", 0),
@@ -1183,6 +1423,7 @@ class TutorHandler(BaseHTTPRequestHandler):
                     "auth": True,
                     "activity": True,
                     "admin_auth": admin_password_is_configured(),
+                    "scaffold_conditions": True,
                 },
             )
             return
@@ -1404,17 +1645,28 @@ class TutorHandler(BaseHTTPRequestHandler):
             payload = self.read_json_body()
             user = ensure_user_tutor_mode(context["user"]) if context else None
             tutor_mode = tutor_mode_for_user(user) if user else DEFAULT_TUTOR_MODE
-            messages = build_tutor_messages(payload, tutor_mode=tutor_mode) if path == "/api/tutor" else clean_messages(payload)
+            scaffold_mode = scaffold_mode_for_user(user) if user else DEFAULT_SCAFFOLD_MODE
+            if path == "/api/tutor" and user:
+                payload["_serverLearnerState"] = learning_state_for_user(user)
+            messages = (
+                build_tutor_messages(payload, tutor_mode=tutor_mode, scaffold_mode=scaffold_mode)
+                if path == "/api/tutor"
+                else clean_messages(payload)
+            )
             raw_prompt = format_raw_prompt(messages)
             learner_request = learner_request_from_payload(payload, messages)
             guardrail_used = path == "/api/tutor" and is_solution_request(learner_request)
-            content = solution_request_guardrail_reply(tutor_mode) if guardrail_used else stream_chat_text(messages)
+            content = solution_request_guardrail_reply(tutor_mode, scaffold_mode) if guardrail_used else stream_chat_text(messages)
             entry = {
                 "id": f"{int(time.time() * 1000)}-{threading.get_ident()}",
                 "created_at": now_iso(),
                 "endpoint": path,
                 "model": MODEL,
                 "tutor_mode": tutor_mode if path == "/api/tutor" else "",
+                "scaffold_mode": scaffold_mode if path == "/api/tutor" else "",
+                "condition_key": user.get("condition_key", f"{tutor_mode}:{scaffold_mode}") if user else "",
+                "condition_label": user.get("condition_label", condition_label_for_user(user)) if user else "",
+                "learner_state": payload.get("_serverLearnerState") if path == "/api/tutor" else {},
                 "template_used": payload.get("messages") is None,
                 "guardrail_used": guardrail_used,
                 "learner_request": learner_request,

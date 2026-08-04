@@ -30,10 +30,11 @@ backend/private_data/
 This directory is ignored by git. It stores:
 
 - `users.json`: usernames and password hashes.
+- `account_metadata.json`: private experiment metadata for each account, including Tutor style, hidden scaffold style, six-cell condition key, and binding timestamps. Existing entries are not reassigned.
 - `sessions.json`: active login sessions.
 - `histories/*.jsonl`: per-account Tutor conversation history.
 - `activities/*.jsonl`: per-account Run, Submit, Tutor chat, code snapshot, and testcase result records.
-- `account_summary.csv`: private account overview with username, password hash, login/activity timestamps, event counts, best score, and latest problem.
+- `account_summary.csv`: private account overview with username, Tutor style, hidden scaffold style, condition key, password hash, login/activity timestamps, event counts, best score, and latest problem.
 
 Passwords are stored as PBKDF2-SHA256 hashes, not plaintext.
 The CSV intentionally records the password hash only; it should remain in the private data directory and must not be committed.
@@ -95,5 +96,8 @@ The tutor prompt is intentionally editable without touching the server code:
 
 - `backend/prompts/tutor_system.md`: system-level tutor behavior and safety rules.
 - `backend/prompts/tutor_user_template.md`: the context template sent with each learner message.
+- `backend/prompts/variants/encouraging_tutor_v9.md`: encouraging tone rules.
+- `backend/prompts/variants/neutral_tutor_v9.md`: neutral tone rules.
+- `backend/prompts/scaffolds/*.md`: hidden scaffold-condition modules for fixed low, fixed high, and adaptive support.
 
 The backend reads these files when it builds each Tutor request, so edits apply on the next request.

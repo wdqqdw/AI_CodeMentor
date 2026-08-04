@@ -28,6 +28,8 @@ Last updated: 2026-08-04
 - Backend conversation history window: latest `100000` characters.
 - Account system: enabled. The app opens with registration/login before AI Tutor can be used.
 - Tutor style binding: enabled. Each account is permanently bound to one Tutor style at registration, or at the next login for older unbound accounts.
+- Hidden scaffold binding: enabled. Each account is privately assigned once to `fixed_low`, `fixed_high`, or `adaptive`; learners do not see this condition. Combined with Encouraging/Neutral Tutor style, this creates six experiment cells.
+- Account metadata JSON: enabled. The backend maintains private `account_metadata.json` with username, Tutor style, hidden scaffold style, condition key, and binding timestamps. Existing metadata is skipped rather than reassigned.
 - Runtime error display: enabled. The editor has a dedicated `Traceback` tab that shows full per-case runtime errors instead of truncating them in the bottom status strip. A single case error does not stop the remaining cases from running.
 - Run/Submit busy state: enabled. While tests are executing, both execution buttons are disabled, the active button shows `Running...` or `Submitting...`, and the status/output areas show progress text.
 - Python execution isolation: enabled. Python submissions run inside `pyodide-worker.js` instead of the browser main thread, using Pyodide `v0.28.2`, with per-case hard timeouts and a repeated-timeout guard so exponential DFS attempts cannot freeze the page.
@@ -35,7 +37,7 @@ Last updated: 2026-08-04
 - Activity dashboard: account-scoped login page with summary cards, a shared scroll area containing the accuracy-over-interactions line chart and an auto-expanding staggered vertical timeline.
 - Activity dashboard compatibility: legacy Tutor chat history is merged into the structured activity feed.
 - Admin account console: root-authenticated page for viewing all accounts, password storage status, account summaries, and short-lived dashboard links for each user.
-- Tutor prompts: Encouraging Tutor v8 and Neutral Tutor v8. Both are length-balanced for the experiment, refuse code/final-answer requests, and avoid exact testcase/code leakage. High-risk requests for complete code, final answers, or complete implementation steps use a deterministic backend guardrail reply so the model cannot expand into solution details. Encouraging Tutor uses limited supportive wording; Neutral Tutor uses plain, non-motivational wording. Tutor requests include whether the learner is viewing the Knowledge lesson or the Practice coding panel.
+- Tutor prompts: Encouraging Tutor v9 and Neutral Tutor v9, crossed with Fixed Low Scaffold, Fixed High Scaffold, and Adaptive Scaffold prompt modules. Fixed Low only asks diagnostic questions; Fixed High gives one small local repair direction and may include a tiny code fragment without a full solution; Adaptive uses learner state plus recent failure counts to choose support level. High-risk requests for complete code, final answers, or exhaustive implementation steps still use a deterministic backend guardrail.
 - Boggle Solver testcases: 140 cases grouped into 11 learning tiers, with non-spoiling hints for the first 130 cases and fully hidden challenge cases for the final 10.
 - Boggle Solver performance tests: enabled. Several later cases include measured `timeLimitMs` thresholds; a plain word-by-word DFS can produce answers but is expected to exceed these limits, while shared-prefix pruning with a Trie should stay comfortably below them.
 - Private account summary CSV: enabled on the backend. The server maintains `account_summary.csv` inside the private backend data directory with usernames, bound Tutor style, password hashes, activity counts, best score, latest problem, and timestamps.
@@ -46,6 +48,7 @@ Last updated: 2026-08-04
 - API keys, admin tokens, `.env.local`, backend logs, private account files, password hashes, sessions, and private chat history must stay outside this public repository.
 - Usernames, password hashes, login sessions, and per-account Tutor history are stored on the AutoDL server under the private backend data directory.
 - Per-account structured records are also stored privately, including code snapshots, runtime tracebacks, problem metadata, test pass rates, visible testcase results, hidden testcase summaries, and Tutor message/reply snapshots.
+- Hidden scaffold assignments are private experiment metadata and should not be shown in learner-facing pages or learner-facing APIs.
 - The account summary CSV and admin console store/show password hash status only, not plaintext passwords. Existing user passwords are irreversible hashes; keep the entire private data directory off GitHub.
 - Root admin credentials are configured only in private AutoDL environment files through `ADMIN_USERNAME` and `ADMIN_PASSWORD_HASH`.
 - The backend debug page is for testing and inspection. Protected backend endpoints may require private credentials that should not be committed here.
@@ -93,6 +96,6 @@ When making future changes, update this README in the same GitHub sync if any of
 - Account/authentication behavior.
 - Structured activity logging fields or dashboard path.
 - Admin console path, root auth behavior, or dashboard impersonation behavior.
-- Private account summary CSV fields or storage location.
+- Private account metadata JSON, account summary CSV fields, or storage location.
 - Tutor prompt variant, prompt guardrail behavior, or prompt evaluation results.
 - Any user-facing operational instruction.

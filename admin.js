@@ -107,9 +107,18 @@ const renderMetrics = (accounts) => {
       if (account.tutor_mode === "neutral") {
         acc.neutral += 1;
       }
+      if (account.scaffold_mode === "fixed_low") {
+        acc.fixedLow += 1;
+      }
+      if (account.scaffold_mode === "fixed_high") {
+        acc.fixedHigh += 1;
+      }
+      if (account.scaffold_mode === "adaptive") {
+        acc.adaptive += 1;
+      }
       return acc;
     },
-    { accounts: 0, events: 0, chats: 0, code: 0, encouraging: 0, neutral: 0 },
+    { accounts: 0, events: 0, chats: 0, code: 0, encouraging: 0, neutral: 0, fixedLow: 0, fixedHigh: 0, adaptive: 0 },
   );
 
   metricGrid.innerHTML = [
@@ -117,6 +126,9 @@ const renderMetrics = (accounts) => {
     ["Total events", totals.events],
     ["Tutor chats", totals.chats],
     ["Run / Submit", totals.code],
+    ["Low scaffold", totals.fixedLow],
+    ["High scaffold", totals.fixedHigh],
+    ["Adaptive", totals.adaptive],
   ]
     .map(
       ([label, value]) => `
@@ -155,6 +167,8 @@ const renderAccounts = (accounts) => {
             <strong>${escapeHtml(account.username || "-")}</strong>
             <span>${escapeHtml(account.user_id || "-")}</span>
             <span class="mode-pill">${escapeHtml(account.tutor_mode_label || account.tutor_mode || "-")}</span>
+            <span class="mode-pill">${escapeHtml(account.scaffold_mode_label || account.scaffold_mode || "-")}</span>
+            <span>${escapeHtml(account.condition_key || "-")}</span>
           </div>
           <div class="account-field">
             <strong>Password</strong>
