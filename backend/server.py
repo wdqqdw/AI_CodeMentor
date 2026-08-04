@@ -846,11 +846,66 @@ def learner_request_needs_high_support(message: Any) -> bool:
     return any(marker in text for marker in markers)
 
 
+def learner_request_asks_local_code_hint(message: Any) -> bool:
+    text = str(message or "").lower()
+    markers = [
+        "给我代码",
+        "给我一些代码",
+        "给我点代码",
+        "给点代码",
+        "一点代码",
+        "少量代码",
+        "提示代码",
+        "代码提示",
+        "代码片段",
+        "哪一行",
+        "第几行",
+        "行附近",
+        "some code",
+        "code hint",
+        "which line",
+        "line",
+    ]
+    return any(marker in text for marker in markers)
+
+
+def infer_code_focus(payload: dict[str, Any] | None = None) -> str:
+    code_state = payload.get("code") if isinstance(payload, dict) and isinstance(payload.get("code"), dict) else {}
+    line_numbered = str(code_state.get("lineNumberedSource") or "")
+    source = str(code_state.get("source") or "")
+    raw_lines = line_numbered.splitlines() if line_numbered else source.splitlines()
+
+    parsed_lines: list[tuple[int, str]] = []
+    for index, line in enumerate(raw_lines, start=1):
+        match = re.match(r"\s*(\d+)\s*\|\s?(.*)$", line)
+        if match:
+            parsed_lines.append((safe_int(match.group(1)), match.group(2)))
+        else:
+            parsed_lines.append((index, line))
+
+    for number, line in parsed_lines:
+        compact = line.replace(" ", "")
+        if "word[1]" in compact or "w[1]" in compact:
+            return f"第 {number} 行附近"
+
+    for number, line in parsed_lines:
+        compact = line.replace(" ", "")
+        if "board[" in compact and ("==" in compact or "!=" in compact):
+            return f"第 {number} 行附近"
+
+    for number, line in parsed_lines:
+        if "for " in line and ("directions" in line or "dr" in line or "dc" in line):
+            return f"第 {number} 行附近"
+
+    return "匹配首字母之后的搜索循环附近"
+
+
 def tutor_reply_fallback(
     tutor_mode: Any,
     scaffold_mode: Any,
     learner_state: dict[str, Any] | None = None,
     learner_request: Any = "",
+    payload: dict[str, Any] | None = None,
 ) -> str:
     mode = normalize_tutor_mode(tutor_mode)
     scaffold = normalize_scaffold_mode(scaffold_mode)
@@ -868,9 +923,15 @@ def tutor_reply_fallback(
             return "这题的核心是路径搜索中的状态一致性。当前路径前进和回退时，哪些信息必须同步变化，才能避免重复使用同一格？"
         return "先抓住一个核心：路径搜索时状态要前进和回退都一致。你能检查当前路径里哪些信息必须同步变化，才不会重复使用同一格吗？"
 
+    focus = infer_code_focus(payload)
+    if learner_request_asks_local_code_hint(learner_request):
+        if mode == "neutral":
+            return f"{focus}把匹配固定在某个字符位置，导致搜索不能继续推进。局部片段可以是 word[pos]，pos 表示当前要匹配的字母位置。先只把这一处改成随搜索推进的位置。"
+        return f"{focus}把匹配固定在某个字符位置，所以更长单词会被截断。局部片段可以是 word[pos]，pos 表示当前要匹配的字母位置。先只把这一处改成随搜索推进的位置。"
+
     if mode == "neutral":
-        return "当前问题更像局部搜索推进不够完整。先看匹配第一个字母之后的附近几行：如果只检查第二个字符，就无法覆盖更长单词。把这段改成能继续向后推进的局部搜索。"
-    return "你已经找到入口了，当前问题更像局部搜索推进不够完整。先看匹配第一个字母之后的附近几行：如果只检查第二个字符，就无法覆盖更长单词。把这段改成能继续向后推进的局部搜索。"
+        return f"当前问题更像局部搜索推进不完整。先看{focus}：如果只检查第二个字符，就无法覆盖更长单词。把这段改成能继续向后推进的局部搜索。"
+    return f"你已经找到入口了，当前问题更像局部搜索推进不完整。先看{focus}：如果只检查第二个字符，就无法覆盖更长单词。把这段改成能继续向后推进的局部搜索。"
 
 
 def scaffold_allows_tiny_code(
@@ -897,9 +958,11 @@ def tutor_reply_needs_fallback(
     state = learner_state if isinstance(learner_state, dict) else {}
     consecutive_failures = safe_int(state.get("consecutive_failed_attempts"))
     message_high_support = learner_request_needs_high_support(learner_request)
+    asks_local_code_hint = learner_request_asks_local_code_hint(learner_request)
     low_support = scaffold == "fixed_low" or (scaffold == "adaptive" and consecutive_failures < 3 and not message_high_support)
     tiny_code_allowed = scaffold_allows_tiny_code(scaffold, state, learner_request)
     question_count = text.count("？") + text.count("?")
+    has_line_reference = re.search(r"第\s*\d+\s*行|\d+\s*行|line\s*\d+", text, re.I) is not None
     code_markers = [
         "```",
         "`",
@@ -917,6 +980,7 @@ def tutor_reply_needs_fallback(
         ".add(",
         ".remove(",
         "board[",
+        "word[",
         "visited[",
         "prefixes =",
         "print(",
@@ -944,6 +1008,8 @@ def tutor_reply_needs_fallback(
             "整段",
             "复制",
         ]
+        if asks_local_code_hint and not has_line_reference:
+            return True
         return len(text) > 170 or any(marker in text for marker in hard_markers)
 
     dangerous_code_detail = any(marker in text for marker in code_markers)
@@ -1844,6 +1910,7 @@ class TutorHandler(BaseHTTPRequestHandler):
             scaffold_mode = scaffold_mode_for_user(user) if user else DEFAULT_SCAFFOLD_MODE
             if path == "/api/tutor" and user:
                 payload["_serverLearnerState"] = learning_state_for_user(user)
+                payload["_serverRecentTutorHistory"] = read_user_history(user["id"], HISTORY_CHAR_LIMIT)
             messages = (
                 build_tutor_messages(payload, tutor_mode=tutor_mode, scaffold_mode=scaffold_mode)
                 if path == "/api/tutor"
@@ -1871,6 +1938,7 @@ class TutorHandler(BaseHTTPRequestHandler):
                         scaffold_mode,
                         payload.get("_serverLearnerState"),
                         learner_request,
+                        payload,
                     )
                     scaffold_fallback_used = True
             entry = {

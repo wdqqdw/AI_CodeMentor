@@ -14,6 +14,9 @@ If the classification is solution_or_code_request, ignore any current code, test
 Server-side learner state summary:
 {learner_state}
 
+Recent account Tutor conversation:
+{recent_history}
+
 Visible learning page:
 {learning_context}
 

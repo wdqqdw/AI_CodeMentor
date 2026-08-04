@@ -41,6 +41,7 @@ Last updated: 2026-08-04
 - Admin account console: root-authenticated page for viewing all accounts, password storage status, account summaries, and short-lived dashboard links for each user.
 - Tutor prompts: Encouraging Tutor v9 and Neutral Tutor v9, crossed with Fixed Low Scaffold, Fixed High Scaffold, and Adaptive Scaffold prompt modules. Fixed Low only asks diagnostic questions; Fixed High gives one small local repair direction without a full solution; Adaptive uses learner state plus recent failure counts to choose support level. High-risk requests and scaffold violations use deterministic backend guardrails to keep length, code-detail, and refusal standards aligned.
 - Tutor code context: enabled. The frontend sends line-numbered editor code to the backend; tutors may point to short line ranges. Complete solution requests still trigger deterministic refusal, while permitted high-support scaffold modes may provide at most one tiny local repair fragment.
+- Tutor conversation context: enabled. Each authenticated Tutor request includes a sanitized summary of the account's recent learner/Tutor turns so follow-up questions retain local context without exposing raw prompts or hidden scaffold metadata.
 - Boggle Solver testcases: 140 cases grouped into 11 learning tiers, with non-spoiling hints for the first 130 cases and fully hidden challenge cases for the final 10.
 - Boggle Solver performance tests: enabled. Several later cases include measured `timeLimitMs` thresholds; a plain word-by-word DFS can produce answers but is expected to exceed these limits, while shared-prefix pruning with a Trie should stay comfortably below them.
 - Private account summary CSV: enabled on the backend. The server maintains `account_summary.csv` inside the private backend data directory with usernames, bound Tutor style, password hashes, activity counts, best score, latest problem, and timestamps.
@@ -68,6 +69,7 @@ Last updated: 2026-08-04
 - `problems/*.md`: editable problem definitions.
 - `backend/`: backend reference code and prompt templates that are safe to keep in the public repo.
 - `backend/prompts/baselines`, `backend/prompts/variants`, `backend/prompts/evaluations`: prompt versioning, baseline backups, and synthetic evaluation notes.
+- `backend/prompts/evaluations/tutor_stress_test_2026-08-04.md`: latest six-condition beginner stress test notes and prompt/guardrail fixes.
 - `backend-chat.html`, `backend-chat.css`, `backend-chat.js`: backend debug page.
 - `activity.html`, `activity.css`, `activity.js`: account-scoped structured activity dashboard.
 - `admin.html`, `admin.css`, `admin.js`: root-authenticated account overview and dashboard jump page.

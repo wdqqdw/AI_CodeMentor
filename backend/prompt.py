@@ -223,6 +223,27 @@ def _format_learner_state(state: Any) -> str:
     )
 
 
+def _format_recent_history(history: Any, limit: int = 8) -> str:
+    if not isinstance(history, list) or not history:
+        return "No earlier Tutor turns are available for this account."
+
+    lines: list[str] = []
+    for index, entry in enumerate(history[-limit:], start=1):
+        if not isinstance(entry, dict):
+            continue
+        learner = _truncate(_text(entry.get("learner_request")), 800)
+        tutor = _truncate(_text(entry.get("message")), 800)
+        error = _truncate(_text(entry.get("error")), 400)
+        if learner:
+            lines.append(f"- Turn {index} learner: {learner}")
+        if tutor:
+            lines.append(f"  Tutor replied: {tutor}")
+        if error:
+            lines.append(f"  Error: {error}")
+
+    return "\n".join(lines) or "No earlier Tutor turns are available for this account."
+
+
 def build_tutor_messages(
     payload: dict[str, Any],
     tutor_mode: str = "encouraging",
@@ -264,6 +285,7 @@ def build_tutor_messages(
     context = _read_prompt_file(USER_TEMPLATE_PATH).format(
         request_classification=request_classification,
         learner_state=_format_learner_state(payload.get("_serverLearnerState")),
+        recent_history=_format_recent_history(payload.get("_serverRecentTutorHistory")),
         problem_english_name=_text(problem.get("englishName"), "Unknown"),
         problem_chinese_name=_text(problem.get("chineseName"), "Unknown"),
         problem_category=_text(problem.get("category"), "Unknown"),
