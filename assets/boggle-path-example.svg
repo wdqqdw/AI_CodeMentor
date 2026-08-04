@@ -60,7 +60,7 @@
     <text x="435" y="172" fill="#1e1735" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="850">Example word</text>
     <text x="435" y="214" fill="#6d2cf0" font-family="SFMono-Regular, Consolas, monospace" font-size="36" font-weight="850">SEARCH</text>
     <text x="435" y="254" fill="#332b51" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="650">S → E → A → R → C → H</text>
-    <text x="435" y="286" fill="#746b91" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="650">The path bends and uses a diagonal step.</text>
-    <text x="435" y="313" fill="#746b91" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="650">That is allowed.</text>
+    <text x="435" y="286" fill="#746b91" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="650">Includes a diagonal step.</text>
+    <text x="435" y="313" fill="#746b91" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="650">Bending is allowed.</text>
   </g>
 </svg>

@@ -15,6 +15,7 @@ const tabButtons = document.querySelectorAll(".tab");
 const languageSelect = document.querySelector("#language-select");
 const syntaxHighlight = document.querySelector("#syntax-highlight");
 const problemPanel = document.querySelector(".problem-panel");
+const expandReadingButton = document.querySelector(".reading-expand-button");
 const expandEditorButton = document.querySelector(".editor-expand-button");
 const editorPanel = document.querySelector(".editor-panel");
 const testcasesPanel = document.querySelector("#testcases-panel");
@@ -141,15 +142,30 @@ const setActiveEditorTab = (view) => {
   window.requestAnimationFrame(syncEditor);
 };
 
+const setReadingExpanded = (isExpanded) => {
+  problemPanel.classList.toggle("reading-expanded", isExpanded);
+  if (expandReadingButton) {
+    expandReadingButton.setAttribute("aria-pressed", String(isExpanded));
+    expandReadingButton.setAttribute("aria-label", isExpanded ? "Collapse problem statement" : "Expand problem statement");
+    expandReadingButton.setAttribute("title", isExpanded ? "Collapse statement" : "Expand problem statement");
+  }
+};
+
+const setCodeExpanded = (isExpanded) => {
+  problemPanel.classList.toggle("code-expanded", isExpanded);
+  expandEditorButton.setAttribute("aria-pressed", String(isExpanded));
+  expandEditorButton.setAttribute("aria-label", isExpanded ? "Collapse code editor" : "Expand code editor");
+  expandEditorButton.setAttribute("title", isExpanded ? "Collapse editor" : "Expand editor");
+  window.requestAnimationFrame(syncEditor);
+};
+
 const setLeftView = (view) => {
   const nextView = view === "practice" ? "practice" : "lesson";
   leftView = nextView;
 
   if (nextView === "lesson") {
-    problemPanel.classList.remove("code-expanded");
-    expandEditorButton.setAttribute("aria-pressed", "false");
-    expandEditorButton.setAttribute("aria-label", "Expand code editor");
-    expandEditorButton.setAttribute("title", "Expand editor");
+    setCodeExpanded(false);
+    setReadingExpanded(false);
   }
 
   problemPanel.classList.toggle("lesson-mode", nextView === "lesson");
@@ -480,9 +496,8 @@ const showCatalog = ({ reset = false, historyMode = "none" } = {}) => {
   }
 
   problemPanel.classList.remove("code-expanded");
-  expandEditorButton.setAttribute("aria-pressed", "false");
-  expandEditorButton.setAttribute("aria-label", "Expand code editor");
-  expandEditorButton.setAttribute("title", "Expand editor");
+  setCodeExpanded(false);
+  setReadingExpanded(false);
   if (reset) {
     expandedCatalogCategory = "";
   } else if (!expandedCatalogCategory && activeProblemPath) {
@@ -1663,12 +1678,18 @@ modeSwitchButtons.forEach((button) => {
 });
 
 expandEditorButton.addEventListener("click", () => {
-  const isExpanded = problemPanel.classList.toggle("code-expanded");
-  expandEditorButton.setAttribute("aria-pressed", String(isExpanded));
-  expandEditorButton.setAttribute("aria-label", isExpanded ? "Collapse code editor" : "Expand code editor");
-  expandEditorButton.setAttribute("title", isExpanded ? "Collapse editor" : "Expand editor");
-  window.requestAnimationFrame(syncEditor);
+  const nextExpanded = !problemPanel.classList.contains("code-expanded");
+  setReadingExpanded(false);
+  setCodeExpanded(nextExpanded);
 });
+
+if (expandReadingButton) {
+  expandReadingButton.addEventListener("click", () => {
+    const nextExpanded = !problemPanel.classList.contains("reading-expanded");
+    setCodeExpanded(false);
+    setReadingExpanded(nextExpanded);
+  });
+}
 
 languageSelect.addEventListener("change", () => {
   codeCache[currentLanguage] = codeEditor.value;

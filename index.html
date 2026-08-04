@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CodeMentor AI</title>
-    <link rel="stylesheet" href="./styles.css?v=knowledge-bilingual-1" />
+    <link rel="stylesheet" href="./styles.css?v=statement-expand-1" />
   </head>
   <body>
     <div class="app-shell">
@@ -303,6 +303,11 @@
               </div>
               <div class="problem-actions">
                 <span class="difficulty"><span></span>Easy</span>
+                <button class="icon-button light reading-expand-button" type="button" aria-label="Expand problem statement" title="Expand problem statement" aria-pressed="false">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M8 3H3v5M16 3h5v5M21 16v5h-5M3 16v5h5" />
+                  </svg>
+                </button>
                 <button class="icon-button bookmark" type="button" aria-label="Bookmark problem" title="Bookmark problem">
                   <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M6.8 4.2h10.4v16l-5.2-3.1-5.2 3.1V4.2Z" />
@@ -360,12 +365,6 @@
                   <option value="python" selected>Python</option>
                   <option value="javascript">JavaScript</option>
                 </select>
-                <button class="icon-button light" type="button" aria-label="Editor settings" title="Editor settings">
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" />
-                    <path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.9 2.9l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.9-2.9l.1-.1A1.6 1.6 0 0 0 4.6 15a1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.9-2.9l.1.1A1.6 1.6 0 0 0 9 4.6a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.9 2.9l-.1.1A1.6 1.6 0 0 0 19.4 9c.2.6.8 1 1.5 1h.1a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1Z" />
-                  </svg>
-                </button>
                 <button class="icon-button light editor-expand-button" type="button" aria-label="Expand code editor" title="Expand editor">
                   <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M8 3H3v5M16 3h5v5M21 16v5h-5M3 16v5h5" />
@@ -542,7 +541,7 @@ class Solution:
         </form>
       </section>
     </div>
-    <script src="./problems.js?v=knowledge-bilingual-1"></script>
+    <script src="./problems.js?v=statement-expand-1"></script>
     <script>
       window.CODEMENTOR_CONFIG = {
         backendBaseUrl: "https://frequent-reflection-combinations-raises.trycloudflare.com",
@@ -550,6 +549,6 @@ class Solution:
         activityApiUrl: "https://frequent-reflection-combinations-raises.trycloudflare.com/api/activity",
       };
     </script>
-    <script src="./script.js?v=pyodide-0-28-2-worker-1"></script>
+    <script src="./script.js?v=statement-expand-1"></script>
   </body>
 </html>

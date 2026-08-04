@@ -351,7 +351,8 @@ svg {
   background: rgba(109, 44, 240, 0.08);
 }
 
-.editor-expand-button[aria-pressed="true"] {
+.editor-expand-button[aria-pressed="true"],
+.reading-expand-button[aria-pressed="true"] {
   color: #ffffff;
   background: var(--purple);
 }
@@ -1019,6 +1020,25 @@ svg {
   margin-top: 10px;
 }
 
+.problem-panel.reading-expanded {
+  grid-template-rows: minmax(0, 1fr);
+  padding: 14px 18px 16px;
+  overflow: hidden;
+}
+
+.problem-panel.reading-expanded .learning-pane {
+  height: 100%;
+}
+
+.problem-panel.reading-expanded .editor-panel,
+.problem-panel.reading-expanded .execution-row {
+  display: none;
+}
+
+.problem-panel.reading-expanded .examples.visual-examples {
+  grid-template-columns: 1fr 1fr;
+}
+
 .problem-toolbar,
 .problem-actions,
 .topic-link,
@@ -1219,7 +1239,7 @@ svg {
   display: block;
   width: 100%;
   aspect-ratio: 12 / 7;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .visual-example-copy {
@@ -1235,10 +1255,12 @@ svg {
 }
 
 .visual-example-copy p {
+  min-width: 0;
   margin: 0;
   color: #4a4168;
   font-size: 0.78rem;
   line-height: 1.42;
+  overflow-wrap: anywhere;
 }
 
 .visual-example-copy dl {

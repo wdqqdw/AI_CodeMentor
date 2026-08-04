@@ -76,10 +76,10 @@ Common mistakes to watch for:
 [
   {
     "title": "Walking Through Neighboring Cells",
-    "image": "./assets/boggle-path-example.svg",
+    "image": "./assets/boggle-path-example.svg?v=example-fit-1",
     "alt": "A board path spelling SEARCH with horizontal, vertical, and diagonal moves.",
     "caption": "The word SEARCH is formed by walking from one adjacent cell to the next. The path may bend, and diagonal moves are valid.",
-    "input": "board = [[\"s\",\"e\",\"t\",\"p\"],[\"a\",\"l\",\"a\",\"r\"],[\"t\",\"n\",\"h\",\"c\"]], words = [\"search\", \"seat\", \"path\"]",
+    "input": "board = [[\"s\",\"e\",\"t\",\"p\"],[\"a\",\"l\",\"a\",\"r\"],[\"t\",\"n\",\"h\",\"c\"]], words = [\"search\", \"share\", \"path\"]",
     "output": "[\"search\"]"
   },
   {
