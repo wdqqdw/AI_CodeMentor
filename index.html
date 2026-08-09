@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CodeMentor AI</title>
-    <link rel="stylesheet" href="./styles.css?v=knowledge-flow-1" />
+    <link rel="stylesheet" href="./styles.css?v=code-reset-undo-1" />
   </head>
   <body>
     <div class="app-shell">
@@ -357,6 +357,19 @@
                 </button>
               </div>
               <div class="editor-tools">
+                <button class="icon-button light code-undo-button" type="button" data-action="undo-code" aria-label="Undo code change" title="Undo code change" disabled>
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M9 14 4 9l5-5" />
+                    <path d="M4 9h10a6 6 0 0 1 0 12h-1" />
+                  </svg>
+                </button>
+                <button class="icon-button light code-reset-button" type="button" data-action="reset-code" aria-label="Reset to starter code" title="Reset to starter code">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 4v6h6" />
+                    <path d="M20 11a8 8 0 1 0-2.3 5.7" />
+                    <path d="M20 4v6h-6" />
+                  </svg>
+                </button>
                 <label class="visually-hidden" for="language-select">Programming language</label>
                 <select class="language-select" id="language-select" aria-label="Programming language">
                   <option value="python" selected>Python</option>
@@ -546,6 +559,6 @@ class Solution:
         activityApiUrl: "https://normal-appreciation-question-space.trycloudflare.com/api/activity",
       };
     </script>
-    <script src="./script.js?v=quiz-single-letter-1"></script>
+    <script src="./script.js?v=code-reset-undo-1"></script>
   </body>
 </html>

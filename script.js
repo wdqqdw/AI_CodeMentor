@@ -17,6 +17,8 @@ const syntaxHighlight = document.querySelector("#syntax-highlight");
 const problemPanel = document.querySelector(".problem-panel");
 const expandReadingButton = document.querySelector(".reading-expand-button");
 const expandEditorButton = document.querySelector(".editor-expand-button");
+const undoCodeButton = document.querySelector("[data-action='undo-code']");
+const resetCodeButton = document.querySelector("[data-action='reset-code']");
 const editorPanel = document.querySelector(".editor-panel");
 const testcasesPanel = document.querySelector("#testcases-panel");
 const tracebackPanel = document.querySelector("#traceback-panel");
@@ -59,6 +61,7 @@ const activityApiUrl = window.CODEMENTOR_CONFIG?.activityApiUrl || `${backendBas
 const authStorageKey = "codementor.auth.v1";
 const codeDraftStoragePrefix = "codementor.codeDraft.v1";
 const codeDraftSaveDelayMs = 150;
+const codeUndoLimit = 80;
 const problemStore = window.CODEMENTOR_PROBLEMS || {};
 const problemCatalog = problemStore.problemCatalog || [];
 const practiceProblemPath = problemStore.markdownProblemPath || "./problems/boggle_solver.md";
@@ -98,6 +101,9 @@ let activeProblemPath = practiceProblemPath || "";
 let expandedCatalogCategory = "";
 let leftView = "quiz";
 let codeDraftSaveTimer = 0;
+let codeUndoStack = [];
+let lastCodeSnapshot = codeEditor.value;
+let suppressCodeHistory = false;
 const viewProblemCache = {};
 const difficultyRank = { easy: 0, medium: 1, hard: 2 };
 
@@ -178,6 +184,53 @@ const flushCodeDraftSave = () => {
   saveCodeDraft();
 };
 
+const updateCodeActionButtons = () => {
+  if (undoCodeButton) {
+    undoCodeButton.disabled = executionBusy || codeUndoStack.length === 0;
+  }
+  if (resetCodeButton) {
+    resetCodeButton.disabled = executionBusy;
+  }
+};
+
+const pushCodeUndoSnapshot = (value) => {
+  const snapshot = String(value ?? "");
+  if (codeUndoStack[codeUndoStack.length - 1] === snapshot) {
+    return;
+  }
+
+  codeUndoStack.push(snapshot);
+  if (codeUndoStack.length > codeUndoLimit) {
+    codeUndoStack.shift();
+  }
+  updateCodeActionButtons();
+};
+
+const resetCodeUndoHistory = (value = codeEditor.value) => {
+  codeUndoStack = [];
+  lastCodeSnapshot = String(value ?? "");
+  updateCodeActionButtons();
+};
+
+const setEditorValue = (value, { save = true, resetHistory = false } = {}) => {
+  suppressCodeHistory = true;
+  codeEditor.value = String(value ?? "");
+  suppressCodeHistory = false;
+  codeCache[currentLanguage] = codeEditor.value;
+  lastCodeSnapshot = codeEditor.value;
+  syncEditor();
+
+  if (resetHistory) {
+    resetCodeUndoHistory(codeEditor.value);
+  } else {
+    updateCodeActionButtons();
+  }
+
+  if (save) {
+    saveCodeDraft(currentLanguage, codeEditor.value);
+  }
+};
+
 const getEditorValueForLanguage = (language = currentLanguage) => {
   const draft = readCodeDraft(language);
   if (draft !== null) {
@@ -190,6 +243,7 @@ const getEditorValueForLanguage = (language = currentLanguage) => {
 const restoreCodeDraft = (language = currentLanguage) => {
   codeEditor.value = getEditorValueForLanguage(language);
   codeCache[language] = codeEditor.value;
+  resetCodeUndoHistory(codeEditor.value);
   syncEditor();
 };
 
@@ -282,6 +336,7 @@ const setBusy = (isBusy, action = "") => {
   runButton.disabled = isBusy;
   submitButton.disabled = isBusy;
   languageSelect.disabled = isBusy;
+  updateCodeActionButtons();
   runButton.setAttribute("aria-busy", String(isBusy && action === "run"));
   submitButton.setAttribute("aria-busy", String(isBusy && action === "submit"));
   if (runButtonLabel) {
@@ -770,6 +825,7 @@ const renderProblem = () => {
 
   codeEditor.value = getEditorValueForLanguage(currentLanguage);
   codeCache[currentLanguage] = codeEditor.value;
+  resetCodeUndoHistory(codeEditor.value);
 };
 
 const getCaseResult = (test) => latestResults.get(test.id);
@@ -1816,17 +1872,60 @@ if (expandReadingButton) {
   });
 }
 
+if (undoCodeButton) {
+  undoCodeButton.addEventListener("click", () => {
+    if (executionBusy || !codeUndoStack.length) {
+      return;
+    }
+
+    const previousCode = codeUndoStack.pop();
+    setEditorValue(previousCode, { save: true });
+    setActiveEditorTab("code");
+    setOutput("Undo applied.", "");
+    setStatus("Undo applied");
+    codeEditor.focus();
+  });
+}
+
+if (resetCodeButton) {
+  resetCodeButton.addEventListener("click", () => {
+    if (executionBusy) {
+      return;
+    }
+
+    const starterCode = codeTemplates[currentLanguage] || "";
+    if (codeEditor.value === starterCode) {
+      setOutput("Already at starter code.", "");
+      setStatus("Already at starter code");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Reset the editor to the starter code? Your current code can be restored with the Undo button.",
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    pushCodeUndoSnapshot(codeEditor.value);
+    setEditorValue(starterCode, { save: true });
+    setTraceback();
+    setActiveEditorTab("code");
+    setOutput("Starter code restored. Use Undo to bring back your previous code.", "");
+    setStatus("Starter code restored");
+    codeEditor.focus();
+  });
+}
+
 languageSelect.addEventListener("change", () => {
   flushCodeDraftSave();
   codeCache[currentLanguage] = codeEditor.value;
   currentLanguage = languageSelect.value;
-  codeEditor.value = getEditorValueForLanguage(currentLanguage);
-  codeCache[currentLanguage] = codeEditor.value;
+  setEditorValue(getEditorValueForLanguage(currentLanguage), { save: false, resetHistory: true });
   setOutput(`${languageSelect.options[languageSelect.selectedIndex].text} mode ready`, "");
   setTraceback();
   setActiveEditorTab("code");
   setStatus("Ready");
-  syncEditor();
 });
 
 const renderInlineMarkdown = (text) => {
@@ -2186,6 +2285,11 @@ logoutButton.addEventListener("click", async () => {
 });
 
 codeEditor.addEventListener("input", () => {
+  if (!suppressCodeHistory) {
+    pushCodeUndoSnapshot(lastCodeSnapshot);
+    lastCodeSnapshot = codeEditor.value;
+    updateCodeActionButtons();
+  }
   syncEditor();
   scheduleCodeDraftSave();
 });
@@ -2196,8 +2300,11 @@ codeEditor.addEventListener("keydown", (event) => {
     const start = codeEditor.selectionStart;
     const end = codeEditor.selectionEnd;
     const tabText = languageSelect.value === "python" ? "    " : "  ";
+    pushCodeUndoSnapshot(codeEditor.value);
     codeEditor.value = `${codeEditor.value.slice(0, start)}${tabText}${codeEditor.value.slice(end)}`;
     codeEditor.selectionStart = codeEditor.selectionEnd = start + tabText.length;
+    lastCodeSnapshot = codeEditor.value;
+    updateCodeActionButtons();
     syncEditor();
     scheduleCodeDraftSave();
   }

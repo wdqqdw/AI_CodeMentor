@@ -351,6 +351,15 @@ svg {
   background: rgba(109, 44, 240, 0.08);
 }
 
+.icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
+}
+
+.icon-button:disabled:hover {
+  background: transparent;
+}
+
 .editor-expand-button[aria-pressed="true"],
 .reading-expand-button[aria-pressed="true"] {
   color: #ffffff;

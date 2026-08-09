@@ -33,6 +33,7 @@ Last updated: 2026-08-05
 - Account metadata JSON: enabled. The backend maintains private `account_metadata.json` with username, Tutor style, hidden scaffold style, condition key, and binding timestamps. Existing metadata is skipped rather than reassigned.
 - Runtime error display: enabled. The editor has a dedicated `Traceback` tab that shows full per-case runtime errors instead of truncating them in the bottom status strip. A single case error does not stop the remaining cases from running.
 - Editor draft persistence: enabled. The browser stores code drafts locally by account, problem, and language so refreshing the page does not erase a learner's current code.
+- Editor recovery controls: enabled. The code toolbar includes Undo and Reset-to-starter buttons; Reset asks for confirmation and can be reversed with Undo.
 - Run/Submit busy state: enabled. While tests are executing, both execution buttons are disabled, the active button shows `Running...` or `Submitting...`, and the status/output areas show progress text.
 - Python execution isolation: enabled. Python submissions run inside `pyodide-worker.js` instead of the browser main thread, using Pyodide `v0.28.2`, with per-case hard timeouts, per-case time-limit checks, and a repeated-timeout guard so exponential DFS attempts cannot freeze the page.
 - Structured activity logging: enabled for Run, Submit, and AI Tutor chat events.
