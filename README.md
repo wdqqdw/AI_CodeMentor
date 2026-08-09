@@ -11,8 +11,8 @@ Last updated: 2026-08-05
 - <a href="https://wdqqdw.github.io/AI_CodeMentor/admin.html" target="_blank" rel="noopener noreferrer">Admin account console</a>
 - <a href="https://wdqqdw.github.io/AI_CodeMentor/backend-chat.html" target="_blank" rel="noopener noreferrer">Backend debug page</a>
 - <a href="https://github.com/wdqqdw/AI_CodeMentor" target="_blank" rel="noopener noreferrer">GitHub repository</a>
-- <a href="https://frequent-reflection-combinations-raises.trycloudflare.com/health" target="_blank" rel="noopener noreferrer">Current public backend health check</a>
-- <a href="https://frequent-reflection-combinations-raises.trycloudflare.com/api/tutor" target="_blank" rel="noopener noreferrer">Current public tutor API endpoint</a>
+- <a href="https://normal-appreciation-question-space.trycloudflare.com/health" target="_blank" rel="noopener noreferrer">Current public backend health check</a>
+- <a href="https://normal-appreciation-question-space.trycloudflare.com/api/tutor" target="_blank" rel="noopener noreferrer">Current public tutor API endpoint</a>
 
 ## Current Deployment
 
@@ -48,7 +48,7 @@ Last updated: 2026-08-05
 
 ## Important Notes
 
-- The current Cloudflare Tunnel URL is a temporary `trycloudflare.com` URL. If the tunnel restarts and the URL changes, update both `index.html` and this README.
+- The current Cloudflare Tunnel URL is a temporary `trycloudflare.com` URL. If the tunnel restarts and the URL changes, update `index.html`, `activity.html`, `admin.html`, and this README.
 - API keys, admin tokens, `.env.local`, backend logs, private account files, password hashes, sessions, and private chat history must stay outside this public repository.
 - Usernames, password hashes, login sessions, and per-account Tutor history are stored on the AutoDL server under the private backend data directory.
 - Per-account structured records are also stored privately, including code snapshots, runtime tracebacks, problem metadata, test pass rates, visible testcase results, hidden testcase summaries, and Tutor message/reply snapshots.
