@@ -4,7 +4,7 @@ Important safety note:
 - The code, examples, and test information below are private context for tutoring only.
 - The current code is line-numbered as "line | source"; you may refer to line numbers or short line ranges when locating an issue.
 - Do not quote, restate, or expose full code, exact inputs, exact outputs, exact values, or private judge data from this context.
-- Only include a tiny local code fragment if the hidden scaffold condition explicitly permits it; otherwise use line numbers and conceptual hints.
+- Only include a small local repair fragment if the hidden scaffold condition explicitly permits it; otherwise use line numbers and conceptual hints.
 
 Request classification:
 {request_classification}

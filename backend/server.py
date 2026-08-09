@@ -926,8 +926,8 @@ def tutor_reply_fallback(
     focus = infer_code_focus(payload)
     if learner_request_asks_local_code_hint(learner_request):
         if mode == "neutral":
-            return f"{focus}把匹配固定在某个字符位置，导致搜索不能继续推进。局部片段可以是 word[pos]，pos 表示当前要匹配的字母位置。先只把这一处改成随搜索推进的位置。"
-        return f"{focus}把匹配固定在某个字符位置，所以更长单词会被截断。局部片段可以是 word[pos]，pos 表示当前要匹配的字母位置。先只把这一处改成随搜索推进的位置。"
+            return f"{focus}把匹配固定在某个字符位置，导致搜索不能继续推进。可以只改这三行以内的小片段：\n`pos` 表示当前要匹配的位置\n`word[pos]` 用来比较当前字符\n`pos + 1` 只在继续下一格时使用\n先检查位置是否随搜索推进。"
+        return f"{focus}把匹配固定在某个字符位置，所以更长单词会被截断。可以只改这三行以内的小片段：\n`pos` 表示当前要匹配的位置\n`word[pos]` 用来比较当前字符\n`pos + 1` 只在继续下一格时使用\n先检查位置是否随搜索推进。"
 
     if mode == "neutral":
         return f"当前问题更像局部搜索推进不完整。先看{focus}：如果只检查第二个字符，就无法覆盖更长单词。把这段改成能继续向后推进的局部搜索。"
@@ -991,26 +991,38 @@ def tutor_reply_needs_fallback(
         "那一行",
     ]
 
-    if "\n" in text:
-        return True
+    non_empty_lines = [line.strip() for line in text.splitlines() if line.strip()]
     if low_support:
-        return question_count != 1 or any(marker in text for marker in code_markers) or len(text) > 115
+        return "\n" in text or question_count != 1 or any(marker in text for marker in code_markers) or len(text) > 115
 
     if tiny_code_allowed:
         hard_markers = [
             "```",
-            "`",
             "def ",
             "class ",
             "import ",
-            "return ",
+            " for ",
+            " while ",
+            " in range",
             "完整",
             "整段",
             "复制",
         ]
+        codeish_line_count = sum(
+            1
+            for line in non_empty_lines
+            if (
+                "`" in line
+                or re.search(r"\b(if|return)\b", line)
+                or re.search(r"\w+\s*=", line)
+                or "[" in line
+                or ".add(" in line
+                or ".remove(" in line
+            )
+        )
         if asks_local_code_hint and not has_line_reference:
             return True
-        return len(text) > 170 or any(marker in text for marker in hard_markers)
+        return len(text) > 280 or len(non_empty_lines) > 6 or codeish_line_count > 3 or any(marker in text for marker in hard_markers)
 
     dangerous_code_detail = any(marker in text for marker in code_markers)
     return len(text) > 145 or dangerous_code_detail
