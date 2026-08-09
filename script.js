@@ -61,6 +61,8 @@ const codeDraftStoragePrefix = "codementor.codeDraft.v1";
 const codeDraftSaveDelayMs = 150;
 const problemStore = window.CODEMENTOR_PROBLEMS || {};
 const problemCatalog = problemStore.problemCatalog || [];
+const practiceProblemPath = problemStore.markdownProblemPath || "./problems/boggle_solver.md";
+const quizProblemPath = problemStore.quizProblemPath || "./problems/single_letter_finder.md";
 const fallbackProblem =
   problemStore.items?.[problemStore.currentProblemId] || Object.values(problemStore.items || {})[0];
 let currentProblem = fallbackProblem;
@@ -92,10 +94,11 @@ let chatBusy = false;
 let executionBusy = false;
 let authMode = "register";
 let authSession = null;
-let activeProblemPath = problemStore.markdownProblemPath || "";
+let activeProblemPath = practiceProblemPath || "";
 let expandedCatalogCategory = "";
-let leftView = "lesson";
+let leftView = "quiz";
 let codeDraftSaveTimer = 0;
+const viewProblemCache = {};
 const difficultyRank = { easy: 0, medium: 1, hard: 2 };
 
 const nowLabel = () =>
@@ -222,7 +225,7 @@ const setCodeExpanded = (isExpanded) => {
 };
 
 const setLeftView = (view) => {
-  const nextView = view === "practice" ? "practice" : "lesson";
+  const nextView = ["quiz", "lesson", "practice"].includes(view) ? view : "quiz";
   leftView = nextView;
 
   if (nextView === "lesson") {
@@ -231,14 +234,15 @@ const setLeftView = (view) => {
   }
 
   problemPanel.classList.toggle("lesson-mode", nextView === "lesson");
-  problemPanel.classList.toggle("practice-mode", nextView === "practice");
+  problemPanel.classList.toggle("practice-mode", nextView === "practice" || nextView === "quiz");
+  problemPanel.classList.toggle("quiz-mode", nextView === "quiz");
   modeSwitchButtons.forEach((button) => {
     const isActive = button.dataset.leftView === nextView;
     button.classList.toggle("active", isActive);
     button.setAttribute("aria-selected", String(isActive));
   });
 
-  if (nextView === "practice") {
+  if (nextView !== "lesson") {
     window.requestAnimationFrame(syncEditor);
   }
 };
@@ -498,27 +502,26 @@ const parseMarkdownProblem = (markdown) => {
   };
 };
 
-const loadConfiguredProblem = async () => {
-  if (!problemStore.markdownProblemPath) {
-    return fallbackProblem;
-  }
-
-  const response = await fetch(problemStore.markdownProblemPath);
-  if (!response.ok) {
-    throw new Error(`Could not load ${problemStore.markdownProblemPath}`);
-  }
-
-  return parseMarkdownProblem(await response.text());
-};
-
-const loadProblemFromPath = async (path) => {
+const fetchMarkdownProblem = async (path) => {
   const response = await fetch(path);
   if (!response.ok) {
     throw new Error(`Could not load ${path}`);
   }
 
-  activeProblemPath = path;
   return parseMarkdownProblem(await response.text());
+};
+
+const loadConfiguredProblem = async () => {
+  if (!practiceProblemPath) {
+    return fallbackProblem;
+  }
+
+  return fetchMarkdownProblem(practiceProblemPath);
+};
+
+const loadProblemFromPath = async (path) => {
+  activeProblemPath = path;
+  return fetchMarkdownProblem(path);
 };
 
 const getCatalogProblemPath = (item) => item.path || `./problems/${item.id}.md`;
@@ -550,6 +553,43 @@ const setBrowserState = (state, mode = "push") => {
       : "#catalog";
   const method = mode === "replace" ? "replaceState" : "pushState";
   window.history[method](state, "", url);
+};
+
+const getProblemPathForLeftView = (view) => (view === "quiz" ? quizProblemPath : practiceProblemPath);
+
+const loadViewProblem = async (view, { force = false } = {}) => {
+  const problemPath = getProblemPathForLeftView(view);
+  if (!problemPath) {
+    return;
+  }
+
+  if (!force && activeProblemPath === problemPath && currentProblem) {
+    return;
+  }
+
+  flushCodeDraftSave();
+  setBusy(true);
+  setOutput("Loading problem...", "");
+
+  try {
+    if (!viewProblemCache[problemPath]) {
+      viewProblemCache[problemPath] = await fetchMarkdownProblem(problemPath);
+    }
+    activeProblemPath = problemPath;
+    setCurrentProblem(viewProblemCache[problemPath]);
+    hideCatalog();
+    renderProblem();
+    renderTestcases();
+    setTraceback();
+    setActiveEditorTab("code");
+    setOutput("Ready", "");
+    setStatus("Ready");
+  } catch (error) {
+    setOutput(error.message, "fail");
+    setStatus("Problem load failed", "fail");
+  } finally {
+    setBusy(false);
+  }
 };
 
 const showCatalog = ({ reset = false, historyMode = "none" } = {}) => {
@@ -1534,9 +1574,16 @@ const buildTutorPayload = (message) => ({
   message,
   learning: {
     view: leftView,
-    title: leftView === "lesson" ? "Boggle Solver prerequisite lesson" : "Boggle Solver coding practice",
+    title:
+      leftView === "quiz"
+        ? "Single Letter Finder programming quiz"
+        : leftView === "lesson"
+          ? "Boggle Solver prerequisite lesson"
+          : "Boggle Solver coding practice",
     topics:
-      leftView === "lesson"
+      leftView === "quiz"
+        ? ["2D grid traversal", "string length", "membership check", "duplicate removal"]
+        : leftView === "lesson"
         ? ["2D grid coordinates", "8-direction movement", "DFS", "backtracking", "prefix pruning"]
         : ["implementation", "test feedback", "traceback debugging"],
   },
@@ -1744,8 +1791,14 @@ tabButtons.forEach((button) => {
 });
 
 modeSwitchButtons.forEach((button) => {
-  button.addEventListener("click", () => {
-    setLeftView(button.dataset.leftView);
+  button.addEventListener("click", async () => {
+    const nextView = button.dataset.leftView;
+    if (nextView !== "lesson") {
+      await loadViewProblem(nextView);
+    } else {
+      await loadViewProblem("practice");
+    }
+    setLeftView(nextView);
   });
 });
 
@@ -2175,7 +2228,12 @@ const hydrateInitialTutorMessage = () => {
 
 const initializeApp = async () => {
   try {
-    setCurrentProblem(await loadConfiguredProblem());
+    viewProblemCache[practiceProblemPath] = await loadConfiguredProblem();
+    if (quizProblemPath) {
+      viewProblemCache[quizProblemPath] = await fetchMarkdownProblem(quizProblemPath);
+    }
+    activeProblemPath = quizProblemPath || practiceProblemPath;
+    setCurrentProblem(viewProblemCache[activeProblemPath] || viewProblemCache[practiceProblemPath]);
   } catch (error) {
     console.warn(error);
     setCurrentProblem(fallbackProblem);
@@ -2185,7 +2243,7 @@ const initializeApp = async () => {
   hydrateInitialTutorMessage();
   renderProblem();
   renderTestcases();
-  setLeftView("lesson");
+  setLeftView("quiz");
   setStatus("Ready");
   syncEditor();
   await verifyStoredSession();

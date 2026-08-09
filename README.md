@@ -1,6 +1,6 @@
 # AI_CodeMentor
 
-AI_CodeMentor is an AI-assisted coding practice prototype. The current public page focuses on a single deeper exercise, **Boggle Solver / 棋盘单词搜索**, with a knowledge-first lesson view, a Python coding panel, testcase feedback, a full Traceback panel for runtime errors, and an AI Tutor chat panel.
+AI_CodeMentor is an AI-assisted coding practice prototype. The current public page starts with a short **Single Letter Finder / 单字母查找** quiz, then supports a prerequisite knowledge view and a deeper **Boggle Solver / 棋盘单词搜索** practice task with a Python coding panel, testcase feedback, a full Traceback panel for runtime errors, and an AI Tutor chat panel.
 
 Last updated: 2026-08-05
 
@@ -17,8 +17,9 @@ Last updated: 2026-08-05
 ## Current Deployment
 
 - Frontend hosting: GitHub Pages.
+- Entry quiz: Single Letter Finder. Learners first complete a very small 2D-board task that only asks them to return length-1 words appearing on the board, checking basic traversal, membership, and duplicate handling.
 - Main exercise: Boggle Solver.
-- Default entry view: Knowledge. Learners first see a roughly 10-minute prerequisite lesson on 2D grids, DFS, backtracking, prefix pruning, and how/when to use AI Tutor, then switch to Practice from the top-left segmented control.
+- Default entry view: Quiz. Learners can then switch to Knowledge for a roughly 10-minute prerequisite lesson on 2D grids, DFS, backtracking, prefix pruning, and how/when to use AI Tutor, or switch to Practice for the full Boggle Solver task from the top-left segmented control.
 - Knowledge AI Tutor guide: compact narrative text. It tells learners that current problem context, page type, code, language, pass rate, public hints, and latest traceback are visible to the Tutor automatically and do not need to be copied manually.
 - Practice statement language: bilingual English/Chinese problem description for Boggle Solver.
 - Statement expansion: enabled. The Practice problem statement/examples can expand within the left pane, separate from the code editor expansion.
@@ -64,7 +65,8 @@ Last updated: 2026-08-05
 - `index.html`: main GitHub Pages entry.
 - `styles.css`: main application layout and visual design.
 - `script.js`: coding panel, test runner, Traceback tab, AI Tutor chat, and UI interactions.
-- `index.html` knowledge view: embedded Boggle Solver prerequisite lesson used before learners enter the coding panel.
+- `index.html` mode switch: Quiz, Knowledge, and Practice share the left pane while AI Tutor remains visible on the right.
+- `index.html` knowledge view: embedded Boggle Solver prerequisite lesson used before learners enter the full coding panel.
 - `problems.js`: generated/static problem catalog used by the page.
 - `problems/*.md`: editable problem definitions.
 - `backend/`: backend reference code and prompt templates that are safe to keep in the public repo.
