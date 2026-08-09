@@ -818,6 +818,9 @@ def normalize_tutor_reply(content: str) -> str:
     if "```" in text:
         return text
     lines = [line.strip().lstrip("-*0123456789.、 ") for line in text.splitlines() if line.strip()]
+    code_hint_lines = sum(1 for line in lines if "`" in line or re.search(r"\b(if|return)\b", line) or "[" in line)
+    if 2 <= code_hint_lines <= 3 and len(lines) <= 5:
+        return "\n".join(lines).strip()
     return re.sub(r"[ \t]{2,}", " ", " ".join(lines)).strip()
 
 
@@ -1021,6 +1024,8 @@ def tutor_reply_needs_fallback(
             )
         )
         if asks_local_code_hint and not has_line_reference:
+            return True
+        if asks_local_code_hint and codeish_line_count < 2:
             return True
         return len(text) > 280 or len(non_empty_lines) > 6 or codeish_line_count > 3 or any(marker in text for marker in hard_markers)
 
