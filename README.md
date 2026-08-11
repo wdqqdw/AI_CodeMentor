@@ -20,6 +20,7 @@ Last updated: 2026-08-11
 - Entry quiz: Single Letter Finder. Learners first complete a very small 2D-board task that only asks them to return length-1 words appearing on the board, checking basic traversal, membership, and duplicate handling.
 - Main exercises: Boggle Solver and Word Ladder.
 - Default entry view: Quiz. Learners can then switch to Knowledge for a roughly 10-minute prerequisite lesson on 2D grids, DFS, backtracking, prefix pruning, and how/when to use AI Tutor, or switch to Boggle / Word Ladder from the top-left segmented control.
+- View timers: enabled. After login, the top bar shows the current left-pane view's accumulated time in seconds. Timing pauses when learners switch away from a view or the page is hidden, and resumes from persisted per-account totals on later logins.
 - Knowledge AI Tutor guide: compact narrative text. It tells learners that current problem context, page type, code, language, pass rate, public hints, and latest traceback are visible to the Tutor automatically and do not need to be copied manually.
 - Practice statement language: bilingual English/Chinese problem description for Boggle Solver.
 - Statement expansion: enabled. The Practice problem statement/examples can expand within the left pane, separate from the code editor expansion.
@@ -46,8 +47,10 @@ Last updated: 2026-08-11
 - Tutor conversation context: enabled. Each authenticated Tutor request includes a sanitized summary of the account's recent learner/Tutor turns for the current task, so follow-up questions retain local context without leaking context from the other task or exposing raw prompts / hidden scaffold metadata.
 - Boggle Solver testcases: 140 cases grouped into 11 learning tiers, with non-spoiling hints for the first 130 cases and fully hidden challenge cases for the final 10.
 - Boggle Solver performance tests: enabled. Several later cases include measured `timeLimitMs` thresholds; a plain word-by-word DFS can produce answers but is expected to exceed these limits, while shared-prefix pruning with a Trie should stay comfortably below them.
+- Word Ladder visual examples: enabled. The task statement includes SVG diagrams for the shortest path length and the one-letter neighbor rule.
 - Word Ladder testcases: 30 cases covering direct transformations, missing end words, multiple shortest paths, length filtering, repeated dictionary entries, and longer transformation chains.
 - Private account summary CSV: enabled on the backend. The server maintains `account_summary.csv` inside the private backend data directory with usernames, study group, task-specific Tutor styles, scaffold assignment, password hashes, activity counts, best score, latest problem, and timestamps.
+- Private account summary CSV timing fields: enabled. The CSV includes total seconds for Quiz, Knowledge, Boggle, and Word Ladder views.
 
 ## Important Notes
 
@@ -85,8 +88,9 @@ Last updated: 2026-08-11
 - `GET /api/me`: validate the current session.
 - `POST /api/logout`: invalidate the current session.
 - `GET /api/my-history`: read the current account's Tutor conversation history.
-- `POST /api/activity`: record a structured Run/Submit learning event.
+- `POST /api/activity`: record a structured Run/Submit learning event or a lightweight `view_time` timing event.
 - `GET /api/my-activity`: read the current account's structured activity records.
+- `GET /api/view-times`: read the current account's persisted per-view accumulated seconds.
 - `POST /api/tutor`: call the AI Tutor. This endpoint requires `Authorization: Bearer <session-token>`.
 - `POST /api/admin/login`: create a root admin session. Uses the private `ADMIN_PASSWORD_HASH`, not a public plaintext password.
 - `GET /api/admin/accounts`: list all account summaries for the admin console.
@@ -106,6 +110,7 @@ When making future changes, update this README in the same GitHub sync if any of
 - Debug/testing page path.
 - Account/authentication behavior.
 - Structured activity logging fields or dashboard path.
+- Per-view timing behavior, timing fields, or timing API path.
 - Admin console path, root auth behavior, or dashboard impersonation behavior.
 - Private account metadata JSON, account summary CSV fields, or storage location.
 - Tutor prompt variant, prompt guardrail behavior, or prompt evaluation results.
