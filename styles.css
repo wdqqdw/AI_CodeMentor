@@ -1266,6 +1266,29 @@ svg {
   align-items: stretch;
 }
 
+.text-example-list {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 14px;
+  min-width: 0;
+}
+
+.text-example-list-title {
+  grid-column: 1 / -1;
+  margin: 2px 0 -3px;
+  color: #211b39;
+  font-size: 0.9rem;
+}
+
+.text-example-list .example-block pre {
+  height: auto;
+  min-height: 66px;
+  overflow: visible;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .visual-example-card {
   min-width: 0;
   display: grid;
@@ -2488,6 +2511,10 @@ svg {
   }
 
   .examples {
+    grid-template-columns: 1fr;
+  }
+
+  .text-example-list {
     grid-template-columns: 1fr;
   }
 
