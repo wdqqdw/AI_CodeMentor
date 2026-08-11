@@ -183,6 +183,7 @@ const renderAccounts = (accounts) => {
             <strong>Activity</strong>
             <span>${escapeHtml(account.total_events || 0)} events</span>
             <span>${escapeHtml(account.chat_count || 0)} chats · ${escapeHtml(account.run_count || 0)} runs · ${escapeHtml(account.submit_count || 0)} submits</span>
+            <span>View time: ${escapeHtml(account.view_seconds_total || 0)}s</span>
           </div>
           <div class="account-field">
             <strong>${escapeHtml(account.latest_problem || "No problem activity")}</strong>
