@@ -103,6 +103,22 @@ Output: ["search"]
 Input: board = [["a","b"],["c","d"]], words = ["abd", "aba", "abcd"]
 Output: ["abd", "abcd"]
 
+### Example 3
+Input: board = [["m","e"],["a","t"]], words = ["me", "me", "eat", "tea", "met", "meat", "team"]
+Output: ["eat", "me", "meat", "met", "tea", "team"]
+
+### Example 4
+Input: board = [["a"]], words = ["a", "aa", "b"]
+Output: ["a"]
+
+### Example 5
+Input: board = [["a","b","c"],["h","g","d"],["i","f","e"]], words = ["abcdefghi", "abcde", "agfed", "ihg", "aei"]
+Output: ["abcde", "abcdefghi", "agfed", "ihg"]
+
+### Example 6
+Input: board = [["c","a","r","t"],["a","r","e","s"],["t","s","d","o"]], words = ["car", "care", "card", "cards", "cart", "carts", "carte"]
+Output: ["car", "card", "cards", "care", "cart", "carte", "carts"]
+
 ## Starter Code - Python
 
 ```python
