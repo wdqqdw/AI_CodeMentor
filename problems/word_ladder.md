@@ -59,6 +59,22 @@ Output: 5
 Input: beginWord = "hit", endWord = "cog", wordList = ["hot","dot","dog","lot","log"]
 Output: 0
 
+### Example 3
+Input: beginWord = "hit", endWord = "cog", wordList = ["hot","dot","dog","lot","log","cog","hog","hig"]
+Output: 4
+
+### Example 4
+Input: beginWord = "a", endWord = "c", wordList = ["a","b","c"]
+Output: 2
+
+### Example 5
+Input: beginWord = "lost", endWord = "cost", wordList = ["most","mist","miss","fist","fish","cost"]
+Output: 2
+
+### Example 6
+Input: beginWord = "abc", endWord = "def", wordList = ["ab","abcd","dbc","dec","def","aef"]
+Output: 4
+
 ## Visual Examples
 
 ```json
