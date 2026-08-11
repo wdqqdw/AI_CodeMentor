@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CodeMentor AI</title>
-    <link rel="stylesheet" href="./styles.css?v=two-task-experiment-1" />
+    <link rel="stylesheet" href="./styles.css?v=view-timer-1" />
   </head>
   <body>
     <div class="app-shell">
@@ -25,6 +25,10 @@
             <button type="button" role="tab" aria-selected="false" data-left-view="lesson">Knowledge</button>
             <button type="button" role="tab" aria-selected="false" data-left-view="practice">Boggle</button>
             <button type="button" role="tab" aria-selected="false" data-left-view="word-ladder">Word Ladder</button>
+          </div>
+          <div class="view-timer" id="view-timer" aria-live="polite" hidden>
+            <span id="view-timer-label">Quiz</span>
+            <strong id="view-timer-value">0s</strong>
           </div>
         </div>
 
@@ -543,8 +547,9 @@ class Solution:
         backendBaseUrl: "https://normal-appreciation-question-space.trycloudflare.com",
         tutorApiUrl: "https://normal-appreciation-question-space.trycloudflare.com/api/tutor",
         activityApiUrl: "https://normal-appreciation-question-space.trycloudflare.com/api/activity",
+        viewTimeApiUrl: "https://normal-appreciation-question-space.trycloudflare.com/api/view-times",
       };
     </script>
-    <script src="./script.js?v=two-task-experiment-1"></script>
+    <script src="./script.js?v=view-timer-1"></script>
   </body>
 </html>
