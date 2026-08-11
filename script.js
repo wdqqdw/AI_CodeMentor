@@ -978,6 +978,29 @@ const renderCatalog = () => {
     .join("");
 };
 
+const renderTextExamples = (examples = []) => {
+  if (!examples.length) {
+    return "";
+  }
+
+  return `
+    <div class="text-example-list" aria-label="Text examples">
+      <h2 class="text-example-list-title">More examples</h2>
+      ${examples
+        .map(
+          (example, index) => `
+            <div class="example-block">
+              <h2>Example ${index + 1}:</h2>
+              <pre><strong>Input:</strong> ${escapeHtml(example.input)}
+<strong>Output:</strong> ${escapeHtml(example.output)}</pre>
+            </div>
+          `,
+        )
+        .join("")}
+    </div>
+  `;
+};
+
 const loadProblemIntoWorkspace = async (path, { historyMode = "push", parentCategoryId = "" } = {}) => {
   setBusy(true);
   setOutput("Loading problem...", "");
@@ -1045,19 +1068,12 @@ const renderProblem = () => {
           </article>
         `,
       )
-      .join("");
+      .join("") + renderTextExamples(currentProblem.examples);
   } else {
     examplesContainer?.classList.remove("visual-examples");
-    document.querySelectorAll("[data-example]").forEach((exampleNode) => {
-    const example = currentProblem.examples[Number(exampleNode.dataset.example)];
-    if (!example) {
-      exampleNode.closest(".example-block").hidden = true;
-      return;
+    if (examplesContainer) {
+      examplesContainer.innerHTML = renderTextExamples(currentProblem.examples);
     }
-
-    exampleNode.closest(".example-block").hidden = false;
-    exampleNode.innerHTML = `<strong>Input:</strong> ${escapeHtml(example.input)}\n<strong>Output:</strong> ${escapeHtml(example.output)}`;
-    });
   }
 
   codeEditor.value = getEditorValueForLanguage(currentLanguage);
@@ -1875,8 +1891,18 @@ const buildLearningContext = () => {
   if (leftView === "lesson") {
     return {
       view: leftView,
-      title: "Boggle Solver prerequisite lesson",
-      topics: ["2D grid coordinates", "8-direction movement", "DFS", "backtracking", "prefix pruning"],
+      title: "Boggle Solver and Word Ladder prerequisite lesson",
+      topics: [
+        "2D grid coordinates",
+        "8-direction movement",
+        "DFS",
+        "backtracking",
+        "prefix pruning",
+        "implicit graph",
+        "BFS",
+        "shortest path",
+        "one-letter transformations",
+      ],
     };
   }
 
