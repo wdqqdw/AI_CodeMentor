@@ -19,10 +19,11 @@ Last updated: 2026-08-11
 - Frontend hosting: GitHub Pages.
 - Entry quiz: Single Letter Finder. Learners first complete a very small 2D-board task that only asks them to return length-1 words appearing on the board, checking basic traversal, membership, and duplicate handling.
 - Main exercises: Boggle Solver and Word Ladder.
-- Default entry view: Quiz. Learners can then switch to Knowledge for a roughly 10-minute prerequisite lesson on 2D grids, DFS, backtracking, prefix pruning, and how/when to use AI Tutor, or switch to Boggle / Word Ladder from the top-left segmented control.
+- Default entry view: Quiz. Learners can then switch to Knowledge for a prerequisite lesson on 2D grids, DFS, backtracking, prefix pruning, implicit word graphs, BFS shortest paths, and how/when to use AI Tutor, or switch to Boggle / Word Ladder from the top-left segmented control.
 - View timers: enabled. After login, the top bar shows the current left-pane view's accumulated time in seconds. Timing pauses when learners switch away from a view or the page is hidden, and resumes from persisted per-account totals on later logins.
 - Knowledge AI Tutor guide: compact narrative text. It tells learners that current problem context, page type, code, language, pass rate, public hints, and latest traceback are visible to the Tutor automatically and do not need to be copied manually.
-- Practice statement language: bilingual English/Chinese problem description for Boggle Solver.
+- Practice statement language: bilingual English/Chinese problem descriptions for Boggle Solver and Word Ladder.
+- Text examples: enabled. Boggle Solver and Word Ladder each include six pure-text examples in addition to their diagrammed examples.
 - Statement expansion: enabled. The Practice problem statement/examples can expand within the left pane, separate from the code editor expansion.
 - AI backend: AutoDL server running a local Python service on port `8787`.
 - Public backend access: Cloudflare Tunnel.
@@ -47,7 +48,7 @@ Last updated: 2026-08-11
 - Tutor conversation context: enabled. Each authenticated Tutor request includes a sanitized summary of the account's recent learner/Tutor turns for the current task, so follow-up questions retain local context without leaking context from the other task or exposing raw prompts / hidden scaffold metadata.
 - Boggle Solver testcases: 140 cases grouped into 11 learning tiers, with non-spoiling hints for the first 130 cases and fully hidden challenge cases for the final 10.
 - Boggle Solver performance tests: enabled. Several later cases include measured `timeLimitMs` thresholds; a plain word-by-word DFS can produce answers but is expected to exceed these limits, while shared-prefix pruning with a Trie should stay comfortably below them.
-- Word Ladder visual examples: enabled. The task statement includes SVG diagrams for the shortest path length and the one-letter neighbor rule.
+- Word Ladder visual examples: enabled. The task statement includes SVG diagrams for the shortest path length and the one-letter neighbor rule, followed by pure-text examples covering shortcuts, direct one-letter transformations, missing end words, and length filtering.
 - Word Ladder testcases: 30 cases covering direct transformations, missing end words, multiple shortest paths, length filtering, repeated dictionary entries, and longer transformation chains.
 - Private account summary CSV: enabled on the backend. The server maintains `account_summary.csv` inside the private backend data directory with usernames, study group, task-specific Tutor styles, scaffold assignment, password hashes, activity counts, best score, latest problem, and timestamps.
 - Private account summary CSV timing fields: enabled. The CSV includes total seconds for Quiz, Knowledge, Boggle, and Word Ladder views.
@@ -71,7 +72,7 @@ Last updated: 2026-08-11
 - `styles.css`: main application layout and visual design.
 - `script.js`: coding panel, test runner, Traceback tab, AI Tutor chat, and UI interactions.
 - `index.html` mode switch: Quiz, Knowledge, Boggle, and Word Ladder share the left pane while AI Tutor remains visible on the right.
-- `index.html` knowledge view: embedded Boggle Solver prerequisite lesson used before learners enter the full coding panel.
+- `index.html` knowledge view: embedded prerequisite lesson covering Boggle Solver's grid DFS/backtracking concepts and Word Ladder's implicit-graph BFS concepts before learners enter the full coding panel.
 - `problems.js`: generated/static problem catalog used by the page.
 - `problems/*.md`: editable problem definitions.
 - `backend/`: backend reference code and prompt templates that are safe to keep in the public repo.
@@ -106,6 +107,7 @@ When making future changes, update this README in the same GitHub sync if any of
 - Current focused exercise.
 - Task/Tutor counterbalancing rules.
 - Testcase count, disclosure tiers, or performance timing thresholds.
+- Problem examples or visual/example rendering behavior.
 - Backend model, port, or deployment location.
 - Debug/testing page path.
 - Account/authentication behavior.
