@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CodeMentor AI</title>
-    <link rel="stylesheet" href="./styles.css?v=view-timer-1" />
+    <link rel="stylesheet" href="./styles.css?v=examples-lesson-1" />
   </head>
   <body>
     <div class="app-shell">
@@ -45,10 +45,11 @@
           <section class="lesson-pane" id="lesson-pane" aria-labelledby="lesson-title">
             <div class="lesson-hero">
               <span class="lesson-kicker">Knowledge First · about 10 minutes</span>
-              <h1 id="lesson-title">Boggle Solver 预备知识</h1>
+              <h1 id="lesson-title">Boggle Solver 与 Word Ladder 预备知识</h1>
               <p>
-                这页用于做题前快速建立共同语言。你会先理解二维棋盘、相邻格移动、DFS、回溯和前缀剪枝，
-                再进入 Practice 页面写自己的解法。阅读时不用记住某一种标准写法，重点是弄清楚“状态如何变化”和“什么时候停止搜索”。
+                这页用于做题前快速建立共同语言。你会先理解 Boggle Solver 需要的二维棋盘、相邻格移动、DFS、回溯和前缀剪枝，
+                也会理解 Word Ladder 需要的隐式图、最短路径和 BFS。阅读时不用记住某一种标准写法，重点是弄清楚
+                “状态如何变化”“什么时候停止搜索”以及“为什么某种搜索顺序能保证答案最短”。
               </p>
             </div>
 
@@ -289,11 +290,121 @@
               </div>
             </section>
 
+            <section class="lesson-section">
+              <div class="lesson-section-heading">
+                <span>9</span>
+                <div>
+                  <h2>Word Ladder：把单词看成图上的点</h2>
+                  <p>
+                    Word Ladder 和 Boggle Solver 表面上都和“单词”有关，但本质不同。Word Ladder 没有棋盘，也没有回溯路径；
+                    它更像是在一张看不见的图上找最短路。每个长度合适的单词是一个节点，如果两个单词只差一个字符，
+                    就可以认为它们之间有一条边。
+                  </p>
+                </div>
+              </div>
+              <div class="concept-grid">
+                <article>
+                  <h3>节点是什么</h3>
+                  <p><code>beginWord</code>、<code>endWord</code> 和字典里长度相同的单词，都可以作为图中的节点。</p>
+                </article>
+                <article>
+                  <h3>边是什么</h3>
+                  <p>两个单词长度相同，并且恰好只有一个字符不同，才能一步互相转换。</p>
+                </article>
+                <article>
+                  <h3>答案是什么</h3>
+                  <p>答案是最短转换序列里的单词个数，包括起点和终点；不是改变字符的次数。</p>
+                </article>
+              </div>
+              <p class="lesson-note">
+                例如 <code>hit → hot → dot → dog → cog</code> 有 5 个单词，所以返回 <code>5</code>。
+                如果 <code>endWord</code> 不在字典中，题目规定直接返回 <code>0</code>，因为终点不能作为合法序列的最后一个单词。
+              </p>
+            </section>
+
+            <section class="lesson-section">
+              <div class="lesson-section-heading">
+                <span>10</span>
+                <div>
+                  <h2>为什么 Word Ladder 适合 BFS</h2>
+                  <p>
+                    Word Ladder 要找的是“最短”转换序列。每次转换的代价都一样，都是改变一个字符，所以它是无权图最短路问题。
+                    BFS 会一层一层向外扩展：先看距离起点 1 步的单词，再看 2 步的单词，再看 3 步的单词。
+                    因此第一次遇到 <code>endWord</code> 时，当前层数就是最短答案。
+                  </p>
+                </div>
+              </div>
+              <ol class="lesson-steps">
+                <li><strong>从起点入队：</strong>把 <code>beginWord</code> 作为第 1 层，因为序列已经包含起点本身。</li>
+                <li><strong>扩展邻居：</strong>从当前单词出发，找到所有只差一个字符、并且在字典中的单词。</li>
+                <li><strong>记录访问：</strong>一个单词第一次进入队列时就标记为已访问，避免重复入队和循环。</li>
+                <li><strong>按层计数：</strong>每扩展到下一层，序列长度增加 1；第一次弹出或生成终点时即可返回。</li>
+              </ol>
+              <p class="lesson-note">
+                这里不要用 DFS 去随便找一条路径，因为 DFS 先找到的路径不一定最短。BFS 的关键价值就是“先短后长”，
+                这正好对应题目要求的最短转换序列。
+              </p>
+            </section>
+
+            <section class="lesson-section">
+              <div class="lesson-section-heading">
+                <span>11</span>
+                <div>
+                  <h2>如何准确判断一步转换</h2>
+                  <p>
+                    判断两个单词能否相邻，必须满足两个条件：长度相同，并且不同字符的位置数量正好是 1。
+                    不同位置为 0 表示还是同一个词，不算一次转换；不同位置大于 1 表示一步改动太多，也不合法。
+                  </p>
+                </div>
+              </div>
+              <div class="concept-grid">
+                <article>
+                  <h3>直接比较</h3>
+                  <p>对当前词和候选词逐字符比较，数一数有几个位置不同。这个方法直观，适合理解规则。</p>
+                </article>
+                <article>
+                  <h3>生成邻居</h3>
+                  <p>也可以枚举每个位置，把它替换成其他字母，检查新词是否在字典集合中。</p>
+                </article>
+                <article>
+                  <h3>通配模式</h3>
+                  <p>例如 <code>hot</code> 可对应 <code>*ot</code>、<code>h*t</code>、<code>ho*</code>，共享模式的词可能相邻。</p>
+                </article>
+              </div>
+              <p class="lesson-note">
+                常见错误包括：把转换次数当成答案而少算起点、允许一次改变两个字符、没有过滤长度不同的词、
+                没有在访问过的单词上做标记，或者在 <code>endWord</code> 不在字典时仍然继续搜索。
+              </p>
+            </section>
+
+            <section class="lesson-section">
+              <div class="lesson-section-heading">
+                <span>12</span>
+                <div>
+                  <h2>两道题的核心区别</h2>
+                  <p>
+                    Boggle Solver 的目标是找出所有能形成的单词，因此更关注 DFS、回溯、路径状态和前缀剪枝；
+                    Word Ladder 的目标是找一条最短转换序列，因此更关注图建模、BFS 层次、访问集合和最短路计数。
+                    学会第一题的 DFS 不会自动解决第二题，因为第二题的关键不是“走完所有可能”，而是“按距离从近到远搜索”。
+                  </p>
+                </div>
+              </div>
+              <div class="mistake-list">
+                <span>Boggle：格子路径，单词路径内不能重复用格</span>
+                <span>Word Ladder：单词图，访问过的单词通常不重复入队</span>
+                <span>Boggle：可能需要找很多答案</span>
+                <span>Word Ladder：只需要最短序列长度</span>
+                <span>Boggle：DFS/回溯是自然起点</span>
+                <span>Word Ladder：BFS 是保证最短的自然起点</span>
+              </div>
+            </section>
+
             <section class="lesson-section lesson-ready">
               <h2>准备进入练习</h2>
               <p>
-                如果你已经能用自己的话解释 DFS 为什么需要“标记”和“撤销”，就可以切换到 Practice。
-                做题时先实现一个正确但不一定最快的版本，再根据测试结果考虑前缀剪枝。
+                如果你已经能用自己的话解释 Boggle 中 DFS 为什么需要“标记”和“撤销”，以及 Word Ladder 中 BFS
+                为什么第一次到达终点就是最短答案，就可以切换到对应练习。做题时先实现一个正确但不一定最快的版本，
+                再根据测试结果考虑前缀剪枝、邻居生成或访问集合的优化。
               </p>
             </section>
           </section>
@@ -541,7 +652,7 @@ class Solution:
         </form>
       </section>
     </div>
-    <script src="./problems.js?v=word-ladder-experiment-1"></script>
+    <script src="./problems.js?v=examples-lesson-1"></script>
     <script>
       window.CODEMENTOR_CONFIG = {
         backendBaseUrl: "https://normal-appreciation-question-space.trycloudflare.com",
@@ -550,6 +661,6 @@ class Solution:
         viewTimeApiUrl: "https://normal-appreciation-question-space.trycloudflare.com/api/view-times",
       };
     </script>
-    <script src="./script.js?v=view-timer-1"></script>
+    <script src="./script.js?v=examples-lesson-1"></script>
   </body>
 </html>
