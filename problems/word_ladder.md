@@ -59,6 +59,29 @@ Output: 5
 Input: beginWord = "hit", endWord = "cog", wordList = ["hot","dot","dog","lot","log"]
 Output: 0
 
+## Visual Examples
+
+```json
+[
+  {
+    "title": "Shortest transformation path",
+    "caption": "Each arrow changes exactly one character. The sequence `hit -> hot -> dot -> dog -> cog` contains 5 words, so the answer is 5.",
+    "image": "./assets/word-ladder-path.svg?v=word-ladder-visual-1",
+    "alt": "Word Ladder shortest path from hit to cog",
+    "input": "beginWord = \"hit\", endWord = \"cog\", wordList has hot, dot, dog, lot, log, cog",
+    "output": "5"
+  },
+  {
+    "title": "Only one-letter neighbors connect",
+    "caption": "A move is valid only when exactly one character changes and the next word appears in `wordList`.",
+    "image": "./assets/word-ladder-neighbor-rule.svg?v=word-ladder-visual-1",
+    "alt": "Valid and invalid Word Ladder neighbor examples",
+    "input": "hot -> dot is allowed; hot -> dog is rejected",
+    "output": "Only one-letter changes are valid moves"
+  }
+]
+```
+
 ## Starter Code - Python
 
 ```python
