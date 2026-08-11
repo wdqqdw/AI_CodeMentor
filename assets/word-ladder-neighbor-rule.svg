@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 520" role="img" aria-labelledby="title desc">
+  <title id="title">Word Ladder neighbor rule</title>
+  <desc id="desc">A valid move changes one letter, while an invalid jump changes two letters.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#fbfaff"/>
+      <stop offset="1" stop-color="#f4efff"/>
+    </linearGradient>
+    <marker id="arrowPurple" markerHeight="12" markerWidth="12" orient="auto" refX="10" refY="6">
+      <path d="M1 1 11 6 1 11Z" fill="#6d2cf0"/>
+    </marker>
+    <marker id="arrowRed" markerHeight="12" markerWidth="12" orient="auto" refX="10" refY="6">
+      <path d="M1 1 11 6 1 11Z" fill="#d93939"/>
+    </marker>
+  </defs>
+  <rect width="960" height="520" rx="28" fill="url(#bg)"/>
+  <text x="54" y="62" fill="#17122f" font-family="Inter, Arial, sans-serif" font-size="32" font-weight="850">Only one-letter neighbors connect</text>
+  <text x="54" y="98" fill="#6c6686" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="650">A move is valid only when exactly one position changes and the next word is in the dictionary.</text>
+
+  <g transform="translate(58 145)">
+    <rect width="392" height="310" rx="24" fill="#fff" stroke="#dcd3ef" stroke-width="3"/>
+    <text x="30" y="44" fill="#22a65a" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="900">Allowed</text>
+    <text x="30" y="75" fill="#6c6686" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700">hot -> dot changes exactly one letter.</text>
+    <path d="M133 166 H248" stroke="#6d2cf0" stroke-width="6" stroke-linecap="round" marker-end="url(#arrowPurple)"/>
+    <g font-family="Inter, Arial, sans-serif" font-size="42" font-weight="900" text-anchor="middle">
+      <rect x="38" y="115" width="94" height="96" rx="18" fill="#f4efff" stroke="#6d2cf0" stroke-width="4"/>
+      <text x="85" y="177" fill="#17122f">hot</text>
+      <rect x="260" y="115" width="94" height="96" rx="18" fill="#f4efff" stroke="#6d2cf0" stroke-width="4"/>
+      <text x="307" y="177" fill="#17122f">dot</text>
+    </g>
+    <g font-family="Inter, Arial, sans-serif" font-size="18" font-weight="850">
+      <rect x="52" y="238" width="286" height="42" rx="12" fill="#f0fff6" stroke="#bfe8cf"/>
+      <text x="195" y="266" fill="#22a65a" text-anchor="middle">only h changes to d</text>
+    </g>
+  </g>
+
+  <g transform="translate(510 145)">
+    <rect width="392" height="310" rx="24" fill="#fff" stroke="#dcd3ef" stroke-width="3"/>
+    <text x="30" y="44" fill="#d93939" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="900">Rejected</text>
+    <text x="30" y="75" fill="#6c6686" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700">hot -> dog changes two letters.</text>
+    <path d="M133 166 H248" stroke="#d93939" stroke-width="6" stroke-linecap="round" stroke-dasharray="12 10" marker-end="url(#arrowRed)"/>
+    <g font-family="Inter, Arial, sans-serif" font-size="42" font-weight="900" text-anchor="middle">
+      <rect x="38" y="115" width="94" height="96" rx="18" fill="#fff8f8" stroke="#d93939" stroke-width="4"/>
+      <text x="85" y="177" fill="#17122f">hot</text>
+      <rect x="260" y="115" width="94" height="96" rx="18" fill="#fff8f8" stroke="#d93939" stroke-width="4"/>
+      <text x="307" y="177" fill="#17122f">dog</text>
+    </g>
+    <path d="M179 116 248 211M248 116 179 211" stroke="#d93939" stroke-width="10" stroke-linecap="round"/>
+    <g font-family="Inter, Arial, sans-serif" font-size="18" font-weight="850">
+      <rect x="52" y="238" width="286" height="42" rx="12" fill="#fff3f3" stroke="#f4c7c7"/>
+      <text x="195" y="266" fill="#d93939" text-anchor="middle">h -> d and t -> g both change</text>
+    </g>
+  </g>
+</svg>
