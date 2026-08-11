@@ -67,6 +67,8 @@ HOST = os.getenv("HOST", "127.0.0.1")
 PORT = int(os.getenv("PORT", "8787"))
 MAX_BODY_BYTES = int(os.getenv("MAX_BODY_BYTES", str(512 * 1024)))
 HISTORY_CHAR_LIMIT = int(os.getenv("HISTORY_CHAR_LIMIT", "100000"))
+VIEW_TIME_CHAR_LIMIT = int(os.getenv("VIEW_TIME_CHAR_LIMIT", "5000000"))
+VIEW_TIME_KEYS = ("quiz", "lesson", "practice", "word-ladder")
 ALLOWED_ORIGINS = {
     origin.strip().rstrip("/")
     for origin in os.getenv("CORS_ALLOWED_ORIGINS", "https://wdqqdw.github.io").split(",")
@@ -225,6 +227,8 @@ def refresh_account_summary_csv() -> None:
             user_id = str(user.get("id", ""))
             entries = read_user_activity(user_id, limit=500000) if user_id else []
             event_counts: defaultdict[str, int] = defaultdict(int)
+            view_times = {view: 0 for view in VIEW_TIME_KEYS}
+            interaction_count = 0
             best_passed = 0
             best_total = 0
             latest_problem = ""
@@ -232,6 +236,14 @@ def refresh_account_summary_csv() -> None:
 
             for entry in entries:
                 event_type = str(entry.get("event_type", "activity") or "activity")
+                if event_type == "view_time":
+                    view_time = entry.get("view_time") if isinstance(entry.get("view_time"), dict) else {}
+                    view = view_time.get("view")
+                    if view in view_times:
+                        view_times[view] += max(0, safe_int(view_time.get("seconds")))
+                    continue
+
+                interaction_count += 1
                 event_counts[event_type] += 1
                 created_at = str(entry.get("created_at", ""))
                 if created_at >= last_activity_at:
@@ -269,11 +281,16 @@ def refresh_account_summary_csv() -> None:
                     "created_at": user.get("created_at", ""),
                     "last_login_at": user.get("last_login_at", ""),
                     "last_activity_at": last_activity_at,
-                    "total_events": len(entries),
+                    "total_events": interaction_count,
                     "run_count": event_counts.get("run", 0),
                     "submit_count": event_counts.get("submit", 0),
                     "chat_count": event_counts.get("chat", 0),
                     "chat_error_count": event_counts.get("chat_error", 0),
+                    "view_seconds_total": sum(view_times.values()),
+                    "view_seconds_quiz": view_times.get("quiz", 0),
+                    "view_seconds_knowledge": view_times.get("lesson", 0),
+                    "view_seconds_boggle": view_times.get("practice", 0),
+                    "view_seconds_word_ladder": view_times.get("word-ladder", 0),
                     "best_passed": best_passed or "",
                     "best_total": best_total or "",
                     "best_percent": best_percent,
@@ -307,6 +324,11 @@ def refresh_account_summary_csv() -> None:
             "submit_count",
             "chat_count",
             "chat_error_count",
+            "view_seconds_total",
+            "view_seconds_quiz",
+            "view_seconds_knowledge",
+            "view_seconds_boggle",
+            "view_seconds_word_ladder",
             "best_passed",
             "best_total",
             "best_percent",
@@ -1496,7 +1518,9 @@ def learning_state_for_user(user: dict[str, Any], problem_id: Any = "") -> dict[
 
 def summarize_user_account(user: dict[str, Any]) -> dict[str, Any]:
     user_id = str(user.get("id", ""))
-    entries = read_user_activity(user_id, limit=500000) if user_id else []
+    raw_entries = read_user_activity(user_id, limit=500000) if user_id else []
+    entries = []
+    view_times = {view: 0 for view in VIEW_TIME_KEYS}
     event_counts: defaultdict[str, int] = defaultdict(int)
     best_passed = 0
     best_total = 0
@@ -1504,8 +1528,16 @@ def summarize_user_account(user: dict[str, Any]) -> dict[str, Any]:
     first_activity_at = ""
     last_activity_at = ""
 
-    for entry in entries:
+    for entry in raw_entries:
         event_type = str(entry.get("event_type", "activity") or "activity")
+        if event_type == "view_time":
+            view_time = entry.get("view_time") if isinstance(entry.get("view_time"), dict) else {}
+            view = view_time.get("view")
+            if view in view_times:
+                view_times[view] += max(0, safe_int(view_time.get("seconds")))
+            continue
+
+        entries.append(entry)
         event_counts[event_type] += 1
 
         created_at = str(entry.get("created_at", ""))
@@ -1550,6 +1582,8 @@ def summarize_user_account(user: dict[str, Any]) -> dict[str, Any]:
         "submit_count": event_counts.get("submit", 0),
         "chat_count": event_counts.get("chat", 0),
         "chat_error_count": event_counts.get("chat_error", 0),
+        "view_seconds_total": sum(view_times.values()),
+        "view_seconds": view_times,
         "best_passed": best_passed if best_total else None,
         "best_total": best_total if best_total else None,
         "best_percent": best_percent,
@@ -1638,9 +1672,38 @@ def sanitize_problem(value: Any) -> dict[str, Any]:
     return problem
 
 
+def sanitize_view_time(value: Any) -> dict[str, Any]:
+    view_time = value if isinstance(value, dict) else {}
+    view = trim_text(view_time.get("view"), 40)
+    if view not in VIEW_TIME_KEYS:
+        view = ""
+    return {
+        "view": view,
+        "label": trim_text(view_time.get("label"), 80),
+        "seconds": max(0, min(safe_int(view_time.get("seconds")), 60 * 60 * 24)),
+    }
+
+
+def read_user_view_times(user_id: str) -> dict[str, int]:
+    totals = {view: 0 for view in VIEW_TIME_KEYS}
+    with DATA_LOCK:
+        entries = read_jsonl_entries(user_activity_path(user_id), VIEW_TIME_CHAR_LIMIT)
+
+    for entry in entries:
+        if entry.get("event_type") != "view_time":
+            continue
+        view_time = entry.get("view_time") if isinstance(entry.get("view_time"), dict) else {}
+        view = view_time.get("view")
+        if view not in totals:
+            continue
+        totals[view] += max(0, safe_int(view_time.get("seconds")))
+
+    return totals
+
+
 def build_activity_entry(user: dict[str, Any], payload: dict[str, Any], event_type: str | None = None) -> dict[str, Any]:
     clean_event_type = trim_text(event_type or payload.get("event_type") or payload.get("eventType"), 40) or "activity"
-    if clean_event_type not in {"run", "submit", "chat", "chat_error", "activity"}:
+    if clean_event_type not in {"run", "submit", "chat", "chat_error", "view_time", "activity"}:
         clean_event_type = "activity"
 
     chat = payload.get("chat") if isinstance(payload.get("chat"), dict) else {}
@@ -1665,6 +1728,7 @@ def build_activity_entry(user: dict[str, Any], payload: dict[str, Any], event_ty
         "problem": sanitize_problem(payload.get("problem")),
         "code": sanitize_code_state(payload.get("code")),
         "test_state": sanitize_test_state(payload.get("testState") or payload.get("test_state")),
+        "view_time": sanitize_view_time(payload.get("view_time") or payload.get("viewTime")),
         "result": {
             "passed": safe_int(result.get("passed")),
             "total": safe_int(result.get("total")),
@@ -2049,12 +2113,31 @@ class TutorHandler(BaseHTTPRequestHandler):
             query = parse_qs(urlparse(self.path).query)
             limit = int(query.get("limit", [str(HISTORY_CHAR_LIMIT)])[0])
             entries = read_user_activity(context["user"]["id"], max(1000, min(limit, 500000)))
+            public_entries = [public_activity_entry(entry) for entry in entries if entry.get("event_type") != "view_time"]
             self.send_json(
                 HTTPStatus.OK,
                 {
-                    "entries": [public_activity_entry(entry) for entry in entries],
-                    "count": len(entries),
+                    "entries": public_entries,
+                    "count": len(public_entries),
                     "char_limit": limit,
+                    "user": public_user(context["user"]),
+                },
+            )
+            return
+
+        if path == "/api/view-times":
+            if not self.request_has_allowed_origin():
+                return
+            context = self.auth_context()
+            if not context:
+                return
+
+            view_times = read_user_view_times(context["user"]["id"])
+            self.send_json(
+                HTTPStatus.OK,
+                {
+                    "view_times": view_times,
+                    "total_seconds": sum(view_times.values()),
                     "user": public_user(context["user"]),
                 },
             )
