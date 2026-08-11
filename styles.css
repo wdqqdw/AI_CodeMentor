@@ -169,6 +169,35 @@ svg {
   box-shadow: 0 5px 14px rgba(28, 8, 70, 0.22);
 }
 
+.view-timer {
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 11px;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.view-timer[hidden] {
+  display: none;
+}
+
+.view-timer span {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.view-timer strong {
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
 .account-status {
   min-width: 0;
   display: inline-flex;
