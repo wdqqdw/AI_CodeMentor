@@ -53,15 +53,21 @@ const accountName = document.querySelector("#account-name");
 const accountTutorMode = document.querySelector("#account-tutor-mode");
 const logoutButton = document.querySelector("#logout-button");
 const modeSwitchButtons = document.querySelectorAll("[data-left-view]");
+const viewTimer = document.querySelector("#view-timer");
+const viewTimerLabel = document.querySelector("#view-timer-label");
+const viewTimerValue = document.querySelector("#view-timer-value");
 
 const tutorApiUrl = window.CODEMENTOR_CONFIG?.tutorApiUrl || "http://127.0.0.1:8787/api/tutor";
 const backendBaseUrl =
   window.CODEMENTOR_CONFIG?.backendBaseUrl || tutorApiUrl.replace(/\/api\/tutor\/?$/, "");
 const activityApiUrl = window.CODEMENTOR_CONFIG?.activityApiUrl || `${backendBaseUrl}/api/activity`;
+const viewTimeApiUrl = window.CODEMENTOR_CONFIG?.viewTimeApiUrl || `${backendBaseUrl}/api/view-times`;
 const authStorageKey = "codementor.auth.v1";
 const codeDraftStoragePrefix = "codementor.codeDraft.v1";
+const viewTimeStoragePrefix = "codementor.viewTimePending.v1";
 const codeDraftSaveDelayMs = 150;
 const codeUndoLimit = 80;
+const viewTimeFlushIntervalMs = 30000;
 const problemStore = window.CODEMENTOR_PROBLEMS || {};
 const problemCatalog = problemStore.problemCatalog || [];
 const practiceProblemPath = problemStore.markdownProblemPath || "./problems/boggle_solver.md";
@@ -110,6 +116,19 @@ let codeDraftSaveTimer = 0;
 let codeUndoStack = [];
 let lastCodeSnapshot = codeEditor.value;
 let suppressCodeHistory = false;
+const viewTimerLabels = {
+  quiz: "Quiz",
+  lesson: "Knowledge",
+  practice: "Boggle",
+  "word-ladder": "Word Ladder",
+};
+let viewTimeTotals = {};
+let viewTimePending = {};
+let activeTimedView = "";
+let activeViewStartedAt = 0;
+let viewTimerTickId = 0;
+let viewTimeFlushId = 0;
+let viewTimeFlushInFlight = false;
 const viewProblemCache = {};
 const difficultyRank = { easy: 0, medium: 1, hard: 2 };
 
@@ -286,6 +305,9 @@ const setCodeExpanded = (isExpanded) => {
 
 const setLeftView = (view) => {
   const nextView = ["quiz", "lesson", "practice", "word-ladder"].includes(view) ? view : "quiz";
+  if (nextView !== leftView) {
+    pauseViewTimer({ flush: true });
+  }
   leftView = nextView;
 
   if (nextView === "lesson") {
@@ -305,6 +327,8 @@ const setLeftView = (view) => {
   if (nextView !== "lesson") {
     window.requestAnimationFrame(syncEditor);
   }
+
+  startViewTimer(nextView);
 };
 
 const setTraceback = (text = "", summary = "No traceback", state = "") => {
@@ -380,6 +404,211 @@ const authHeaders = () =>
         Authorization: `Bearer ${authSession.token}`,
       }
     : {};
+
+const normalizeViewTimeMap = (value = {}) => {
+  const source = value && typeof value === "object" ? value : {};
+  return Object.fromEntries(
+    Object.keys(viewTimerLabels).map((view) => [view, Math.max(0, Math.floor(Number(source[view]) || 0))]),
+  );
+};
+
+viewTimeTotals = normalizeViewTimeMap();
+viewTimePending = normalizeViewTimeMap();
+
+const getViewTimeStorageKey = () => `${viewTimeStoragePrefix}:${getDraftAccountKey()}`;
+
+const readPendingViewTimes = () => {
+  try {
+    return normalizeViewTimeMap(JSON.parse(window.localStorage.getItem(getViewTimeStorageKey()) || "{}"));
+  } catch (error) {
+    console.warn("Could not read view time backup.", error);
+    return normalizeViewTimeMap();
+  }
+};
+
+const savePendingViewTimes = () => {
+  try {
+    window.localStorage.setItem(getViewTimeStorageKey(), JSON.stringify(viewTimePending));
+  } catch (error) {
+    console.warn("Could not save view time backup.", error);
+  }
+};
+
+const getActiveElapsedSeconds = () => {
+  if (!activeTimedView || !activeViewStartedAt) {
+    return 0;
+  }
+
+  return Math.max(0, Math.floor((window.performance.now() - activeViewStartedAt) / 1000));
+};
+
+const commitActiveViewSeconds = () => {
+  const elapsed = getActiveElapsedSeconds();
+  if (!elapsed || !activeTimedView) {
+    return 0;
+  }
+
+  viewTimeTotals[activeTimedView] = (viewTimeTotals[activeTimedView] || 0) + elapsed;
+  viewTimePending[activeTimedView] = (viewTimePending[activeTimedView] || 0) + elapsed;
+  activeViewStartedAt += elapsed * 1000;
+  savePendingViewTimes();
+  return elapsed;
+};
+
+const getDisplayedViewSeconds = (view = leftView) =>
+  (viewTimeTotals[view] || 0) + (view === activeTimedView ? getActiveElapsedSeconds() : 0);
+
+const updateViewTimerDisplay = () => {
+  if (!viewTimer || !viewTimerLabel || !viewTimerValue) {
+    return;
+  }
+
+  viewTimer.hidden = !authSession?.token;
+  if (!authSession?.token) {
+    return;
+  }
+
+  const totalsForTitle = Object.entries(viewTimerLabels)
+    .map(([view, label]) => `${label}: ${getDisplayedViewSeconds(view)}s`)
+    .join(" | ");
+
+  viewTimerLabel.textContent = viewTimerLabels[leftView] || "Current";
+  viewTimerValue.textContent = `${getDisplayedViewSeconds(leftView)}s`;
+  viewTimer.setAttribute("title", totalsForTitle);
+};
+
+const postViewTimeDelta = async (view, seconds, { keepalive = false } = {}) => {
+  if (!authSession?.token || !seconds) {
+    return false;
+  }
+
+  const payload = {
+    event_type: "view_time",
+    client_created_at: new Date().toISOString(),
+    view_time: {
+      view,
+      seconds,
+      label: viewTimerLabels[view] || view,
+    },
+  };
+
+  const response = await fetch(activityApiUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(),
+    },
+    body: JSON.stringify(payload),
+    keepalive,
+  });
+
+  return response.ok;
+};
+
+const flushViewTime = async ({ keepalive = false } = {}) => {
+  if (!authSession?.token || viewTimeFlushInFlight) {
+    return;
+  }
+
+  commitActiveViewSeconds();
+  const snapshot = normalizeViewTimeMap(viewTimePending);
+  const entries = Object.entries(snapshot).filter(([, seconds]) => seconds > 0);
+  if (!entries.length) {
+    updateViewTimerDisplay();
+    return;
+  }
+
+  viewTimeFlushInFlight = true;
+  for (const [view, seconds] of entries) {
+    try {
+      const ok = await postViewTimeDelta(view, seconds, { keepalive });
+      if (ok) {
+        viewTimePending[view] = Math.max(0, (viewTimePending[view] || 0) - seconds);
+      }
+    } catch (error) {
+      console.warn("Could not sync view time.", error);
+    }
+  }
+  viewTimeFlushInFlight = false;
+
+  savePendingViewTimes();
+  updateViewTimerDisplay();
+};
+
+const scheduleViewTimeFlush = () => {
+  window.clearTimeout(viewTimeFlushId);
+  if (!authSession?.token) {
+    return;
+  }
+
+  viewTimeFlushId = window.setTimeout(async () => {
+    await flushViewTime();
+    scheduleViewTimeFlush();
+  }, viewTimeFlushIntervalMs);
+};
+
+const startViewTimer = (view = leftView) => {
+  if (!authSession?.token || document.hidden) {
+    updateViewTimerDisplay();
+    return;
+  }
+
+  if (activeTimedView !== view) {
+    if (activeTimedView) {
+      commitActiveViewSeconds();
+    }
+    activeTimedView = view;
+    activeViewStartedAt = window.performance.now();
+  }
+
+  window.clearInterval(viewTimerTickId);
+  viewTimerTickId = window.setInterval(updateViewTimerDisplay, 1000);
+  scheduleViewTimeFlush();
+  updateViewTimerDisplay();
+};
+
+const pauseViewTimer = ({ flush = true, keepalive = false } = {}) => {
+  commitActiveViewSeconds();
+  activeTimedView = "";
+  activeViewStartedAt = 0;
+  window.clearInterval(viewTimerTickId);
+  if (flush) {
+    void flushViewTime({ keepalive });
+  }
+  updateViewTimerDisplay();
+};
+
+const loadViewTimes = async () => {
+  if (!authSession?.token) {
+    viewTimeTotals = normalizeViewTimeMap();
+    viewTimePending = normalizeViewTimeMap();
+    updateViewTimerDisplay();
+    return;
+  }
+
+  const pending = readPendingViewTimes();
+  let serverTotals = normalizeViewTimeMap();
+
+  try {
+    const response = await fetch(viewTimeApiUrl, {
+      headers: authHeaders(),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (response.ok) {
+      serverTotals = normalizeViewTimeMap(data.view_times || data.viewTimes || {});
+    }
+  } catch (error) {
+    console.warn("Could not load persisted view time.", error);
+  }
+
+  viewTimePending = pending;
+  viewTimeTotals = normalizeViewTimeMap(
+    Object.fromEntries(
+      Object.keys(viewTimerLabels).map((view) => [view, (serverTotals[view] || 0) + (viewTimePending[view] || 0)]),
+    ),
+  );
+  updateViewTimerDisplay();
+};
 
 const setChatEnabled = (isEnabled) => {
   chatInput.disabled = !isEnabled || chatBusy;
@@ -2107,6 +2336,8 @@ const completeAuth = async (session) => {
   updateAccountStatus();
   hideAuthGate();
   restoreCodeDraft();
+  await loadViewTimes();
+  startViewTimer(leftView);
   try {
     await loadAccountHistory();
   } catch (error) {
@@ -2138,8 +2369,11 @@ const verifyStoredSession = async () => {
     updateAccountStatus();
     hideAuthGate();
     restoreCodeDraft();
+    await loadViewTimes();
+    startViewTimer(leftView);
     await loadAccountHistory();
   } catch (error) {
+    pauseViewTimer({ flush: false });
     clearAuthSession();
     updateAccountStatus();
     resetChatThread();
@@ -2291,6 +2525,8 @@ authForm.addEventListener("submit", async (event) => {
 
 logoutButton.addEventListener("click", async () => {
   flushCodeDraftSave();
+  pauseViewTimer({ flush: false });
+  await flushViewTime();
   const token = authSession?.token;
   if (token) {
     try {
@@ -2304,6 +2540,8 @@ logoutButton.addEventListener("click", async () => {
   }
 
   clearAuthSession();
+  window.clearTimeout(viewTimeFlushId);
+  updateViewTimerDisplay();
   updateAccountStatus();
   resetChatThread();
   showAuthGate("login");
@@ -2335,7 +2573,19 @@ codeEditor.addEventListener("keydown", (event) => {
     scheduleCodeDraftSave();
   }
 });
-window.addEventListener("beforeunload", flushCodeDraftSave);
+window.addEventListener("beforeunload", () => {
+  flushCodeDraftSave();
+  pauseViewTimer({ flush: true, keepalive: true });
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    pauseViewTimer({ flush: true, keepalive: true });
+    return;
+  }
+
+  startViewTimer(leftView);
+});
 
 const hydrateInitialTutorMessage = () => {
   const legacyAvatar = chatThread.querySelector(".message.tutor .avatar");
