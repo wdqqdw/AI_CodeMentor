@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 520" role="img" aria-labelledby="title desc">
+  <title id="title">Word Ladder shortest transformation path</title>
+  <desc id="desc">A shortest path from hit to cog through hot, dot, dog, and cog, with each step changing exactly one letter.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#f9f6ff"/>
+      <stop offset="1" stop-color="#efe8ff"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#271c4a" flood-opacity=".16"/>
+    </filter>
+    <marker id="arrow" markerHeight="12" markerWidth="12" orient="auto" refX="10" refY="6">
+      <path d="M1 1 11 6 1 11Z" fill="#6d2cf0"/>
+    </marker>
+  </defs>
+  <rect width="960" height="520" rx="28" fill="url(#bg)"/>
+  <text x="54" y="62" fill="#17122f" font-family="Inter, Arial, sans-serif" font-size="32" font-weight="800">Shortest transformation path</text>
+  <text x="54" y="98" fill="#6c6686" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="650">BFS explores level by level, so the first time we reach cog is the shortest answer.</text>
+
+  <g stroke="#6d2cf0" stroke-width="6" stroke-linecap="round" marker-end="url(#arrow)">
+    <path d="M190 235 C238 235 258 235 305 235"/>
+    <path d="M405 235 C453 235 473 235 520 235"/>
+    <path d="M620 235 C668 235 688 235 735 235"/>
+    <path d="M835 235 C868 235 875 260 875 305"/>
+  </g>
+  <g opacity=".35" stroke="#8b83a8" stroke-width="4" stroke-linecap="round">
+    <path d="M405 250 C470 322 535 327 620 300"/>
+    <path d="M620 300 C706 303 754 294 835 318"/>
+  </g>
+
+  <g font-family="Inter, Arial, sans-serif" font-weight="850" text-anchor="middle" filter="url(#shadow)">
+    <g transform="translate(82 170)">
+      <rect width="116" height="116" rx="22" fill="#fff" stroke="#dcd3ef" stroke-width="3"/>
+      <text x="58" y="70" fill="#17122f" font-size="42">hit</text>
+      <text x="58" y="150" fill="#8b83a8" font-size="18" filter="none">level 1</text>
+    </g>
+    <g transform="translate(300 170)">
+      <rect width="116" height="116" rx="22" fill="#fff" stroke="#6d2cf0" stroke-width="4"/>
+      <rect x="16" y="25" width="28" height="50" rx="8" fill="#6d2cf0"/>
+      <text x="30" y="62" fill="#fff" font-size="38">h</text>
+      <text x="69" y="62" fill="#17122f" font-size="38">ot</text>
+      <text x="58" y="150" fill="#8b83a8" font-size="18" filter="none">level 2</text>
+    </g>
+    <g transform="translate(518 170)">
+      <rect width="116" height="116" rx="22" fill="#fff" stroke="#6d2cf0" stroke-width="4"/>
+      <rect x="16" y="25" width="28" height="50" rx="8" fill="#6d2cf0"/>
+      <text x="30" y="62" fill="#fff" font-size="38">d</text>
+      <text x="69" y="62" fill="#17122f" font-size="38">ot</text>
+      <text x="58" y="150" fill="#8b83a8" font-size="18" filter="none">level 3</text>
+    </g>
+    <g transform="translate(736 170)">
+      <rect width="116" height="116" rx="22" fill="#fff" stroke="#6d2cf0" stroke-width="4"/>
+      <rect x="72" y="25" width="28" height="50" rx="8" fill="#6d2cf0"/>
+      <text x="47" y="62" fill="#17122f" font-size="38">do</text>
+      <text x="86" y="62" fill="#fff" font-size="38">g</text>
+      <text x="58" y="150" fill="#8b83a8" font-size="18" filter="none">level 4</text>
+    </g>
+    <g transform="translate(817 330)">
+      <rect width="116" height="116" rx="22" fill="#6d2cf0" stroke="#6d2cf0" stroke-width="4"/>
+      <text x="58" y="70" fill="#fff" font-size="42">cog</text>
+      <text x="58" y="150" fill="#6c6686" font-size="18" filter="none">level 5</text>
+    </g>
+  </g>
+
+  <g transform="translate(470 330)" opacity=".82" font-family="Inter, Arial, sans-serif" font-weight="800">
+    <rect width="132" height="74" rx="18" fill="#fff" stroke="#dcd3ef" stroke-width="2"/>
+    <text x="66" y="32" fill="#6c6686" font-size="18" text-anchor="middle">other branch</text>
+    <text x="66" y="58" fill="#8b83a8" font-size="21" text-anchor="middle">lot -> log</text>
+  </g>
+
+  <g transform="translate(54 400)">
+    <rect width="540" height="70" rx="18" fill="#fff" stroke="#e5dfef" stroke-width="2"/>
+    <text x="26" y="31" fill="#17122f" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="850">Answer</text>
+    <text x="118" y="31" fill="#6d2cf0" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="900">5</text>
+    <text x="26" y="55" fill="#6c6686" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="650">Count every word in the path: hit, hot, dot, dog, cog.</text>
+  </g>
+</svg>
