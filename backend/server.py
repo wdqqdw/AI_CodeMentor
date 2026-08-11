@@ -115,6 +115,29 @@ SCAFFOLD_MODE_ALIASES = {
     "self_adaptive": "adaptive",
     "failure_adaptive": "adaptive",
 }
+DEFAULT_EXPERIMENT_GROUP = "group_a"
+EXPERIMENT_GROUPS = {
+    "group_a": {
+        "label": "Study Group A",
+        "boggle_solver": "encouraging",
+        "word_ladder": "neutral",
+    },
+    "group_b": {
+        "label": "Study Group B",
+        "boggle_solver": "neutral",
+        "word_ladder": "encouraging",
+    },
+}
+EXPERIMENT_GROUP_ALIASES = {
+    "a": "group_a",
+    "group_a": "group_a",
+    "study_group_a": "group_a",
+    "b": "group_b",
+    "group_b": "group_b",
+    "study_group_b": "group_b",
+}
+BOGGLE_PROBLEM_KEYS = {"boggle_solver", "single_letter_finder", "boggle", "quiz"}
+WORD_LADDER_PROBLEM_KEYS = {"word_ladder", "word ladder", "ladderLength", "ladder_length"}
 
 HISTORY_DIR = BACKEND_DIR / "logs"
 HISTORY_PATH = HISTORY_DIR / "tutor_history.jsonl"
@@ -222,15 +245,24 @@ def refresh_account_summary_csv() -> None:
                     best_total = total
 
             best_percent = f"{(best_passed / best_total * 100):.1f}" if best_total else ""
+            experiment_group = experiment_group_for_user(user)
+            boggle_tutor_mode = tutor_mode_for_problem(user, "boggle_solver")
+            word_ladder_tutor_mode = tutor_mode_for_problem(user, "word_ladder")
             rows.append(
                 {
                     "user_id": user_id,
                     "username": user.get("username", ""),
-                    "tutor_mode": tutor_mode_for_user(user),
-                    "tutor_mode_label": tutor_mode_label(tutor_mode_for_user(user)),
+                    "experiment_group": experiment_group,
+                    "experiment_group_label": experiment_group_label(experiment_group),
+                    "boggle_tutor_mode": boggle_tutor_mode,
+                    "boggle_tutor_mode_label": tutor_mode_label(boggle_tutor_mode),
+                    "word_ladder_tutor_mode": word_ladder_tutor_mode,
+                    "word_ladder_tutor_mode_label": tutor_mode_label(word_ladder_tutor_mode),
+                    "tutor_mode": boggle_tutor_mode,
+                    "tutor_mode_label": tutor_mode_label(boggle_tutor_mode),
                     "scaffold_mode": scaffold_mode_for_user(user),
                     "scaffold_mode_label": scaffold_mode_label(scaffold_mode_for_user(user)),
-                    "condition_key": user.get("condition_key", f"{tutor_mode_for_user(user)}:{scaffold_mode_for_user(user)}"),
+                    "condition_key": user.get("condition_key", f"{experiment_group}:{scaffold_mode_for_user(user)}"),
                     "condition_label": user.get("condition_label", condition_label_for_user(user)),
                     "password_storage": "pbkdf2_sha256_hash_only",
                     "password_hash": user.get("password_hash", ""),
@@ -253,6 +285,12 @@ def refresh_account_summary_csv() -> None:
         fieldnames = [
             "user_id",
             "username",
+            "experiment_group",
+            "experiment_group_label",
+            "boggle_tutor_mode",
+            "boggle_tutor_mode_label",
+            "word_ladder_tutor_mode",
+            "word_ladder_tutor_mode_label",
             "tutor_mode",
             "tutor_mode_label",
             "scaffold_mode",
@@ -305,6 +343,15 @@ def normalize_scaffold_mode(value: Any) -> str:
     return SCAFFOLD_MODE_ALIASES[key]
 
 
+def normalize_experiment_group(value: Any) -> str:
+    key = str(value or DEFAULT_EXPERIMENT_GROUP).strip().lower().replace("-", "_")
+    return EXPERIMENT_GROUP_ALIASES.get(key, DEFAULT_EXPERIMENT_GROUP)
+
+
+def experiment_group_label(group: Any) -> str:
+    return EXPERIMENT_GROUPS[normalize_experiment_group(group)]["label"]
+
+
 def tutor_mode_label(mode: Any) -> str:
     try:
         return TUTOR_MODES[normalize_tutor_mode(mode)]
@@ -334,7 +381,56 @@ def scaffold_mode_for_user(user: dict[str, Any]) -> str:
 
 
 def condition_label_for_user(user: dict[str, Any]) -> str:
-    return f"{tutor_mode_label(tutor_mode_for_user(user))} / {scaffold_mode_label(scaffold_mode_for_user(user))}"
+    return f"{experiment_group_label(experiment_group_for_user(user))} / {scaffold_mode_label(scaffold_mode_for_user(user))}"
+
+
+def experiment_problem_key(problem_id: Any) -> str:
+    raw = str(problem_id or "").strip()
+    lowered = raw.lower().replace("-", "_").replace(" ", "_")
+    if lowered in {item.replace(" ", "_").lower() for item in WORD_LADDER_PROBLEM_KEYS}:
+        return "word_ladder"
+    if lowered in {item.replace(" ", "_").lower() for item in BOGGLE_PROBLEM_KEYS}:
+        return "boggle_solver"
+    if "word_ladder" in lowered or "ladder" in lowered:
+        return "word_ladder"
+    if "boggle" in lowered or "single_letter" in lowered:
+        return "boggle_solver"
+    return "boggle_solver"
+
+
+def problem_id_from_payload(payload: dict[str, Any] | None) -> str:
+    if not isinstance(payload, dict):
+        return ""
+    problem = payload.get("problem") if isinstance(payload.get("problem"), dict) else {}
+    for key in ("id", "englishName", "methodName", "javascriptFunctionName"):
+        value = problem.get(key)
+        if value:
+            return str(value)
+    return ""
+
+
+def experiment_group_for_user(user: dict[str, Any]) -> str:
+    return normalize_experiment_group(user.get("experiment_group"))
+
+
+def tutor_mode_for_problem(user: dict[str, Any], problem_id: Any) -> str:
+    group = experiment_group_for_user(user)
+    problem_key = experiment_problem_key(problem_id)
+    return EXPERIMENT_GROUPS[group].get(problem_key, EXPERIMENT_GROUPS[group]["boggle_solver"])
+
+
+def request_condition_key(user: dict[str, Any], problem_id: Any, tutor_mode: Any | None = None) -> str:
+    group = experiment_group_for_user(user)
+    problem_key = experiment_problem_key(problem_id)
+    mode = tutor_mode or tutor_mode_for_problem(user, problem_id)
+    return f"{group}:{problem_key}:{normalize_tutor_mode(mode)}:{scaffold_mode_for_user(user)}"
+
+
+def request_condition_label(user: dict[str, Any], problem_id: Any, tutor_mode: Any | None = None) -> str:
+    problem_key = experiment_problem_key(problem_id)
+    problem_label = "Word Ladder" if problem_key == "word_ladder" else "Boggle"
+    mode = normalize_tutor_mode(tutor_mode or tutor_mode_for_problem(user, problem_id))
+    return f"{experiment_group_label(experiment_group_for_user(user))} / {problem_label}: {tutor_mode_label(mode)} / {scaffold_mode_label(scaffold_mode_for_user(user))}"
 
 
 def choose_scaffold_mode_for_tutor(tutor_mode: Any, metadata: dict[str, Any] | None = None) -> str:
@@ -357,6 +453,27 @@ def choose_scaffold_mode_for_tutor(tutor_mode: Any, metadata: dict[str, Any] | N
     return min(SCAFFOLD_MODES.keys(), key=lambda mode: (counts[mode], list(SCAFFOLD_MODES.keys()).index(mode)))
 
 
+def group_for_legacy_boggle_tutor_mode(tutor_mode: Any) -> str:
+    return "group_b" if tutor_mode_for_user({"tutor_mode": tutor_mode}) == "neutral" else "group_a"
+
+
+def choose_experiment_group(metadata: dict[str, Any] | None = None) -> str:
+    metadata_store = metadata or read_json_file(ACCOUNT_METADATA_PATH, {"accounts": {}})
+    accounts = metadata_store.get("accounts", {}) if isinstance(metadata_store, dict) else {}
+    counts = {group: 0 for group in EXPERIMENT_GROUPS}
+
+    for account in accounts.values() if isinstance(accounts, dict) else []:
+        if not isinstance(account, dict):
+            continue
+        if not account.get("experiment_group"):
+            continue
+        group = normalize_experiment_group(account.get("experiment_group"))
+        counts[group] += 1
+
+    group_order = list(EXPERIMENT_GROUPS.keys())
+    return min(group_order, key=lambda group: (counts[group], group_order.index(group)))
+
+
 def ensure_account_metadata(user: dict[str, Any]) -> dict[str, Any]:
     user_id = str(user.get("id", "")).strip()
     username_key = str(user.get("username_key") or normalize_username(str(user.get("username", ""))))
@@ -367,26 +484,52 @@ def ensure_account_metadata(user: dict[str, Any]) -> dict[str, Any]:
     metadata_store = read_json_file(ACCOUNT_METADATA_PATH, {"version": 1, "accounts": {}})
     accounts = metadata_store.setdefault("accounts", {})
     existing = accounts.get(metadata_key)
-    if isinstance(existing, dict) and existing.get("scaffold_mode"):
-        for field in ("scaffold_mode", "scaffold_mode_label", "condition_key", "condition_label", "metadata_bound_at"):
+    if isinstance(existing, dict) and existing.get("scaffold_mode") and existing.get("experiment_group"):
+        for field in (
+            "experiment_group",
+            "experiment_group_label",
+            "boggle_tutor_mode",
+            "boggle_tutor_mode_label",
+            "word_ladder_tutor_mode",
+            "word_ladder_tutor_mode_label",
+            "scaffold_mode",
+            "scaffold_mode_label",
+            "condition_key",
+            "condition_label",
+            "metadata_bound_at",
+        ):
             if existing.get(field):
                 user[field] = existing[field]
         return existing
 
     tutor_mode = tutor_mode_for_user(user)
     scaffold_mode = scaffold_mode_for_user(user) if user.get("scaffold_mode") else choose_scaffold_mode_for_tutor(tutor_mode, metadata_store)
-    condition_key = f"{tutor_mode}:{scaffold_mode}"
+    if isinstance(existing, dict) and existing.get("tutor_mode"):
+        experiment_group = group_for_legacy_boggle_tutor_mode(existing.get("tutor_mode"))
+    elif user.get("experiment_group"):
+        experiment_group = normalize_experiment_group(user.get("experiment_group"))
+    else:
+        experiment_group = choose_experiment_group(metadata_store)
+    boggle_tutor_mode = EXPERIMENT_GROUPS[experiment_group]["boggle_solver"]
+    word_ladder_tutor_mode = EXPERIMENT_GROUPS[experiment_group]["word_ladder"]
+    condition_key = f"{experiment_group}:{scaffold_mode}"
     bound_at = now_iso()
     entry = {
         "user_id": user_id,
         "username": user.get("username", ""),
         "username_key": username_key,
-        "tutor_mode": tutor_mode,
-        "tutor_mode_label": tutor_mode_label(tutor_mode),
+        "tutor_mode": boggle_tutor_mode,
+        "tutor_mode_label": tutor_mode_label(boggle_tutor_mode),
+        "experiment_group": experiment_group,
+        "experiment_group_label": experiment_group_label(experiment_group),
+        "boggle_tutor_mode": boggle_tutor_mode,
+        "boggle_tutor_mode_label": tutor_mode_label(boggle_tutor_mode),
+        "word_ladder_tutor_mode": word_ladder_tutor_mode,
+        "word_ladder_tutor_mode_label": tutor_mode_label(word_ladder_tutor_mode),
         "scaffold_mode": scaffold_mode,
         "scaffold_mode_label": scaffold_mode_label(scaffold_mode),
         "condition_key": condition_key,
-        "condition_label": f"{tutor_mode_label(tutor_mode)} / {scaffold_mode_label(scaffold_mode)}",
+        "condition_label": f"{experiment_group_label(experiment_group)} / {scaffold_mode_label(scaffold_mode)}",
         "metadata_bound_at": bound_at,
         "created_at": user.get("created_at", bound_at),
         "last_login_at": user.get("last_login_at", ""),
@@ -396,6 +539,15 @@ def ensure_account_metadata(user: dict[str, Any]) -> dict[str, Any]:
     metadata_store["updated_at"] = bound_at
     write_json_file(ACCOUNT_METADATA_PATH, metadata_store)
 
+    user["experiment_group"] = experiment_group
+    user["experiment_group_bound_at"] = user.get("experiment_group_bound_at") or bound_at
+    user["experiment_group_label"] = entry["experiment_group_label"]
+    user["boggle_tutor_mode"] = boggle_tutor_mode
+    user["boggle_tutor_mode_label"] = entry["boggle_tutor_mode_label"]
+    user["word_ladder_tutor_mode"] = word_ladder_tutor_mode
+    user["word_ladder_tutor_mode_label"] = entry["word_ladder_tutor_mode_label"]
+    user["tutor_mode"] = boggle_tutor_mode
+    user["tutor_mode_label"] = entry["tutor_mode_label"]
     user["scaffold_mode"] = scaffold_mode
     user["scaffold_mode_bound_at"] = bound_at
     user["scaffold_mode_label"] = entry["scaffold_mode_label"]
@@ -412,6 +564,7 @@ def ensure_all_account_metadata(users: dict[str, Any]) -> None:
             continue
         before = json.dumps(
             {
+                "experiment_group": user.get("experiment_group"),
                 "scaffold_mode": user.get("scaffold_mode"),
                 "condition_key": user.get("condition_key"),
                 "metadata_bound_at": user.get("metadata_bound_at"),
@@ -421,6 +574,7 @@ def ensure_all_account_metadata(users: dict[str, Any]) -> None:
         ensure_account_metadata(user)
         after = json.dumps(
             {
+                "experiment_group": user.get("experiment_group"),
                 "scaffold_mode": user.get("scaffold_mode"),
                 "condition_key": user.get("condition_key"),
                 "metadata_bound_at": user.get("metadata_bound_at"),
@@ -447,8 +601,17 @@ def update_account_metadata_login(user: dict[str, Any]) -> None:
 
     entry["username"] = user.get("username", entry.get("username", ""))
     entry["username_key"] = user.get("username_key", entry.get("username_key", ""))
-    entry["tutor_mode"] = tutor_mode_for_user(user)
-    entry["tutor_mode_label"] = tutor_mode_label(tutor_mode_for_user(user))
+    if not entry.get("experiment_group"):
+        ensure_account_metadata(user)
+        return
+    entry["experiment_group"] = experiment_group_for_user(user)
+    entry["experiment_group_label"] = experiment_group_label(experiment_group_for_user(user))
+    entry["boggle_tutor_mode"] = tutor_mode_for_problem(user, "boggle_solver")
+    entry["boggle_tutor_mode_label"] = tutor_mode_label(entry["boggle_tutor_mode"])
+    entry["word_ladder_tutor_mode"] = tutor_mode_for_problem(user, "word_ladder")
+    entry["word_ladder_tutor_mode_label"] = tutor_mode_label(entry["word_ladder_tutor_mode"])
+    entry["tutor_mode"] = entry["boggle_tutor_mode"]
+    entry["tutor_mode_label"] = entry["boggle_tutor_mode_label"]
     entry["last_login_at"] = user.get("last_login_at", "")
     entry["updated_at"] = now_iso()
     metadata_store["updated_at"] = entry["updated_at"]
@@ -459,9 +622,11 @@ def solution_request_guardrail_reply(
     tutor_mode: Any,
     scaffold_mode: Any = DEFAULT_SCAFFOLD_MODE,
     learner_state: dict[str, Any] | None = None,
+    problem_id: Any = "",
 ) -> str:
     mode = normalize_tutor_mode(tutor_mode)
     scaffold = normalize_scaffold_mode(scaffold_mode)
+    problem_key = experiment_problem_key(problem_id)
     state = learner_state if isinstance(learner_state, dict) else {}
     attempt_count = safe_int(state.get("attempt_count"))
     consecutive_failures = safe_int(state.get("consecutive_failed_attempts"))
@@ -469,20 +634,41 @@ def solution_request_guardrail_reply(
     low_support = scaffold == "fixed_low" or early_adaptive
 
     if low_support:
+        if problem_key == "word_ladder":
+            if mode == "neutral":
+                return "不能提供代码、最终答案或可复制实现。先把问题缩小到一步：从当前单词出发，哪些字典词只差一个字符？"
+            return "我不能提供代码、最终答案或可复制实现。先把问题缩小到一步：从当前单词出发，你觉得哪些字典词只差一个字符？"
         if mode == "neutral":
             return "不能提供代码、最终答案或可复制实现。先把问题缩小到一步：从棋盘某个格子出发，下一步有哪些相邻格可以选择？"
         return "我不能提供代码、最终答案或可复制实现。先把问题缩小到一步：从棋盘某个格子出发，你觉得下一步有哪些相邻格可以选择？"
 
     if attempt_count == 0:
+        if problem_key == "word_ladder":
+            if mode == "neutral":
+                return "完整代码和可复制答案不能提供。先定位当前单词、候选邻居和层数记录；如果已有代码，可以按行号检查一个局部位置。你现在想先看哪一小段逻辑？"
+            return "我理解你想快一点看到代码，但完整代码和可复制答案不能提供。先定位当前单词、候选邻居和层数记录；如果你已有代码，我可以按行号帮你看一个局部位置。你想先看哪一小段逻辑？"
         if mode == "neutral":
             return "完整代码和可复制答案不能提供。先定位起点选择和八方向候选；如果已有代码，可以按行号检查一个局部位置。你现在想先看哪一小段逻辑？"
         return "我理解你想快一点看到代码，但完整代码和可复制答案不能提供。先定位起点选择和八方向候选；如果你已有代码，我可以按行号帮你看一个局部位置。你想先看哪一小段逻辑？"
 
     if mode == "neutral":
+        if problem_key == "word_ladder":
+            return (
+                "代码、最终答案和详细实现结构不能提供。"
+                "可以只做一个局部修复判断：先检查当前搜索是否按层推进，再看访问标记是否在入队时更新。"
+                "需要先扩展哪一小段邻居筛选逻辑？"
+            )
         return (
             "代码、最终答案和详细实现结构不能提供。"
             "可以只做一个局部修复判断：先检查当前搜索停在了哪一行附近，再看它是否只验证了下一个字符。"
             "需要先扩展哪一小段搜索逻辑？"
+        )
+
+    if problem_key == "word_ladder":
+        return (
+            "我理解你想直接看到答案，但我不能提供代码、最终答案或详细实现结构。"
+            "可以先做一个很小的局部修复：按行号找出当前搜索扩展邻居的位置，再确认它是否只加入相差一个字符且未访问的词。"
+            "你想先让我帮你定位哪一行附近吗？"
         )
 
     return (
@@ -493,14 +679,13 @@ def solution_request_guardrail_reply(
 
 
 def public_user(user: dict[str, Any]) -> dict[str, Any]:
-    mode = tutor_mode_for_user(user)
     return {
         "id": user.get("id", ""),
         "username": user.get("username", ""),
         "created_at": user.get("created_at", ""),
-        "tutor_mode": mode,
-        "tutor_mode_label": tutor_mode_label(mode),
-        "tutor_mode_locked": bool(user.get("tutor_mode")),
+        "study_label": "Study Session",
+        "tutor_mode_label": "AI Tutor",
+        "tutor_mode_locked": True,
     }
 
 
@@ -523,8 +708,14 @@ def public_history_entry(entry: dict[str, Any]) -> dict[str, Any]:
 def public_activity_entry(entry: dict[str, Any]) -> dict[str, Any]:
     clean_entry = dict(entry)
     for hidden_key in (
+        "tutor_mode",
+        "tutor_mode_label",
         "scaffold_mode",
         "scaffold_mode_label",
+        "experiment_group",
+        "experiment_group_label",
+        "boggle_tutor_mode",
+        "word_ladder_tutor_mode",
         "condition_key",
         "condition_label",
         "learner_state",
@@ -683,7 +874,7 @@ def authenticate_user(username: str, password: str, tutor_mode: Any = None) -> d
 
 
 def ensure_user_tutor_mode(user: dict[str, Any], fallback: Any = DEFAULT_TUTOR_MODE) -> dict[str, Any]:
-    if user.get("tutor_mode") and user.get("scaffold_mode"):
+    if user.get("experiment_group") and user.get("scaffold_mode"):
         return user
 
     user_id = str(user.get("id", ""))
@@ -874,6 +1065,7 @@ def learner_request_asks_local_code_hint(message: Any) -> bool:
 
 def infer_code_focus(payload: dict[str, Any] | None = None) -> str:
     code_state = payload.get("code") if isinstance(payload, dict) and isinstance(payload.get("code"), dict) else {}
+    problem_key = experiment_problem_key(problem_id_from_payload(payload if isinstance(payload, dict) else {}))
     line_numbered = str(code_state.get("lineNumberedSource") or "")
     source = str(code_state.get("source") or "")
     raw_lines = line_numbered.splitlines() if line_numbered else source.splitlines()
@@ -885,6 +1077,24 @@ def infer_code_focus(payload: dict[str, Any] | None = None) -> str:
             parsed_lines.append((safe_int(match.group(1)), match.group(2)))
         else:
             parsed_lines.append((index, line))
+
+    if problem_key == "word_ladder":
+        for number, line in parsed_lines:
+            compact = line.replace(" ", "")
+            if "diff" in compact or "sum(" in compact and "!=" in compact:
+                return f"第 {number} 行附近"
+
+        for number, line in parsed_lines:
+            compact = line.replace(" ", "")
+            if "queue" in compact.lower() or "deque" in compact.lower() or ".append(" in compact:
+                return f"第 {number} 行附近"
+
+        for number, line in parsed_lines:
+            compact = line.replace(" ", "")
+            if "seen" in compact or "visited" in compact:
+                return f"第 {number} 行附近"
+
+        return "扩展下一层候选单词的循环附近"
 
     for number, line in parsed_lines:
         compact = line.replace(" ", "")
@@ -912,6 +1122,7 @@ def tutor_reply_fallback(
 ) -> str:
     mode = normalize_tutor_mode(tutor_mode)
     scaffold = normalize_scaffold_mode(scaffold_mode)
+    problem_key = experiment_problem_key(problem_id_from_payload(payload if isinstance(payload, dict) else {}))
     state = learner_state if isinstance(learner_state, dict) else {}
     attempt_count = safe_int(state.get("attempt_count"))
     consecutive_failures = safe_int(state.get("consecutive_failed_attempts"))
@@ -919,18 +1130,35 @@ def tutor_reply_fallback(
 
     if scaffold == "fixed_low" or (scaffold == "adaptive" and consecutive_failures < 3 and not message_high_support):
         if scaffold == "adaptive" and attempt_count == 0:
+            if problem_key == "word_ladder":
+                if mode == "neutral":
+                    return "先把任务拆成从当前单词出发的一步选择。给定一个单词时，哪些字典词可以作为下一层候选？"
+                return "先别急着写完整过程，把任务拆成从当前单词出发的一步选择。给定一个单词时，你觉得哪些字典词可以作为下一层候选？"
             if mode == "neutral":
                 return "先把任务拆成从一个格子出发的一步选择。给定当前位置时，哪些相邻格可以作为下一个字符的候选？"
             return "先别急着写完整过程，把任务拆成从一个格子出发的一步选择。给定当前位置时，你觉得哪些相邻格可以作为下一个字符的候选？"
+        if problem_key == "word_ladder":
+            if mode == "neutral":
+                return "这题的核心是隐式图最短路中的层次推进。当前层扩展和访问标记之间，哪些信息必须同步变化，才能避免重复访问？"
+            return "先抓住一个核心：隐式图最短路要按层推进。你能检查当前层扩展和访问标记之间，哪些信息必须同步变化，才不会重复访问吗？"
         if mode == "neutral":
             return "这题的核心是路径搜索中的状态一致性。当前路径前进和回退时，哪些信息必须同步变化，才能避免重复使用同一格？"
         return "先抓住一个核心：路径搜索时状态要前进和回退都一致。你能检查当前路径里哪些信息必须同步变化，才不会重复使用同一格吗？"
 
     focus = infer_code_focus(payload)
     if learner_request_asks_local_code_hint(learner_request):
+        if problem_key == "word_ladder":
+            if mode == "neutral":
+                return f"{focus}需要只把相差一个字符且未访问的词放入下一层。可以只改这三行以内的小片段：\n`diff` 表示两个词不同字符数\n`diff == 1` 才是合法邻居\n`seen` 在入队时更新\n先检查邻居筛选是否和层次推进同步。"
+            return f"{focus}先局部处理邻居筛选，不需要写完整搜索。可以只改这三行以内的小片段：\n`diff` 表示两个词不同字符数\n`diff == 1` 才是合法邻居\n`seen` 在入队时更新\n再看同一个词是否会被重复加入。"
         if mode == "neutral":
             return f"{focus}把匹配固定在某个字符位置，导致搜索不能继续推进。可以只改这三行以内的小片段：\n`pos` 表示当前要匹配的位置\n`word[pos]` 用来比较当前字符\n`pos + 1` 只在继续下一格时使用\n先检查位置是否随搜索推进。"
         return f"{focus}把匹配固定在某个字符位置，所以更长单词会被截断。可以只改这三行以内的小片段：\n`pos` 表示当前要匹配的位置\n`word[pos]` 用来比较当前字符\n`pos + 1` 只在继续下一格时使用\n先检查位置是否随搜索推进。"
+
+    if problem_key == "word_ladder":
+        if mode == "neutral":
+            return f"当前问题更像层次搜索推进或邻居筛选不完整。先看{focus}：只把相差一个字符且未访问的词推进到下一层。检查第一次到达终点时记录的层数。"
+        return f"你已经接近核心了，当前问题更像层次搜索推进或邻居筛选不完整。先看{focus}：只把相差一个字符且未访问的词推进到下一层。再检查第一次到达终点时记录的层数。"
 
     if mode == "neutral":
         return f"当前问题更像局部搜索推进不完整。先看{focus}：如果只检查第二个字符，就无法覆盖更长单词。把这段改成能继续向后推进的局部搜索。"
@@ -1142,17 +1370,24 @@ def read_history(limit: int = HISTORY_CHAR_LIMIT) -> list[dict[str, Any]]:
         return read_jsonl_history(HISTORY_PATH, limit)
 
 
-def read_user_history(user_id: str, limit: int = HISTORY_CHAR_LIMIT) -> list[dict[str, Any]]:
+def read_user_history(user_id: str, limit: int = HISTORY_CHAR_LIMIT, problem_id: Any = "") -> list[dict[str, Any]]:
     with DATA_LOCK:
         entries = read_jsonl_history(user_history_path(user_id), limit)
 
+    target_problem_key = experiment_problem_key(problem_id) if problem_id else ""
     public_entries = []
     for entry in entries:
+        if target_problem_key:
+            entry_problem = entry.get("problem") if isinstance(entry.get("problem"), dict) else {}
+            entry_problem_key = experiment_problem_key(entry_problem.get("id") or entry_problem.get("englishName"))
+            if entry_problem_key != target_problem_key:
+                continue
         public_entries.append(
             {
                 "id": entry.get("id", ""),
                 "created_at": entry.get("created_at", ""),
                 "model": entry.get("model", ""),
+                "problem": sanitize_problem(entry.get("problem")),
                 "learner_request": entry.get("learner_request", ""),
                 "message": entry.get("message", ""),
                 "error": entry.get("error", ""),
@@ -1196,7 +1431,7 @@ def read_user_activity(user_id: str, limit: int = HISTORY_CHAR_LIMIT) -> list[di
     return limited
 
 
-def learning_state_for_user(user: dict[str, Any]) -> dict[str, Any]:
+def learning_state_for_user(user: dict[str, Any], problem_id: Any = "") -> dict[str, Any]:
     user_id = str(user.get("id", ""))
     if not user_id:
         return {
@@ -1210,10 +1445,19 @@ def learning_state_for_user(user: dict[str, Any]) -> dict[str, Any]:
         }
 
     entries = read_user_activity(user_id, limit=500000)
+    target_problem_key = experiment_problem_key(problem_id) if problem_id else ""
     assessment_entries = [
         entry
         for entry in entries
         if entry.get("event_type") in {"run", "submit"}
+        and (
+            not target_problem_key
+            or experiment_problem_key(
+                (entry.get("problem") if isinstance(entry.get("problem"), dict) else {}).get("id")
+                or (entry.get("problem") if isinstance(entry.get("problem"), dict) else {}).get("englishName")
+            )
+            == target_problem_key
+        )
     ]
     failed_attempt_count = 0
     consecutive_failed_attempts = 0
@@ -1278,7 +1522,9 @@ def summarize_user_account(user: dict[str, Any]) -> dict[str, Any]:
             best_total = total
 
     best_percent = round(best_passed / best_total * 100, 1) if best_total else None
-    mode = tutor_mode_for_user(user)
+    experiment_group = experiment_group_for_user(user)
+    boggle_tutor_mode = tutor_mode_for_problem(user, "boggle_solver")
+    word_ladder_tutor_mode = tutor_mode_for_problem(user, "word_ladder")
     scaffold = scaffold_mode_for_user(user)
     return {
         "user_id": user_id,
@@ -1287,11 +1533,17 @@ def summarize_user_account(user: dict[str, Any]) -> dict[str, Any]:
         "last_login_at": user.get("last_login_at", ""),
         "first_activity_at": first_activity_at,
         "last_activity_at": last_activity_at,
-        "tutor_mode": mode,
-        "tutor_mode_label": tutor_mode_label(mode),
+        "experiment_group": experiment_group,
+        "experiment_group_label": experiment_group_label(experiment_group),
+        "boggle_tutor_mode": boggle_tutor_mode,
+        "boggle_tutor_mode_label": tutor_mode_label(boggle_tutor_mode),
+        "word_ladder_tutor_mode": word_ladder_tutor_mode,
+        "word_ladder_tutor_mode_label": tutor_mode_label(word_ladder_tutor_mode),
+        "tutor_mode": boggle_tutor_mode,
+        "tutor_mode_label": tutor_mode_label(boggle_tutor_mode),
         "scaffold_mode": scaffold,
         "scaffold_mode_label": scaffold_mode_label(scaffold),
-        "condition_key": user.get("condition_key", f"{mode}:{scaffold}"),
+        "condition_key": user.get("condition_key", f"{experiment_group}:{scaffold}"),
         "condition_label": user.get("condition_label", condition_label_for_user(user)),
         "total_events": len(entries),
         "run_count": event_counts.get("run", 0),
@@ -1393,6 +1645,8 @@ def build_activity_entry(user: dict[str, Any], payload: dict[str, Any], event_ty
 
     chat = payload.get("chat") if isinstance(payload.get("chat"), dict) else {}
     result = payload.get("result") if isinstance(payload.get("result"), dict) else {}
+    problem_id = problem_id_from_payload(payload)
+    active_tutor_mode = tutor_mode_for_problem(user, problem_id)
     entry = {
         "id": f"{int(time.time() * 1000)}-{threading.get_ident()}",
         "created_at": now_iso(),
@@ -1400,7 +1654,14 @@ def build_activity_entry(user: dict[str, Any], payload: dict[str, Any], event_ty
         "event_type": clean_event_type,
         "user_id": user.get("id"),
         "username": user.get("username"),
-        "tutor_mode": tutor_mode_for_user(user),
+        "experiment_group": experiment_group_for_user(user),
+        "experiment_group_label": experiment_group_label(experiment_group_for_user(user)),
+        "tutor_mode": active_tutor_mode,
+        "tutor_mode_label": tutor_mode_label(active_tutor_mode),
+        "scaffold_mode": scaffold_mode_for_user(user),
+        "scaffold_mode_label": scaffold_mode_label(scaffold_mode_for_user(user)),
+        "condition_key": request_condition_key(user, problem_id, active_tutor_mode),
+        "condition_label": request_condition_label(user, problem_id, active_tutor_mode),
         "problem": sanitize_problem(payload.get("problem")),
         "code": sanitize_code_state(payload.get("code")),
         "test_state": sanitize_test_state(payload.get("testState") or payload.get("test_state")),
@@ -1923,11 +2184,12 @@ class TutorHandler(BaseHTTPRequestHandler):
         try:
             payload = self.read_json_body()
             user = ensure_user_tutor_mode(context["user"]) if context else None
-            tutor_mode = tutor_mode_for_user(user) if user else DEFAULT_TUTOR_MODE
+            problem_id = problem_id_from_payload(payload)
+            tutor_mode = tutor_mode_for_problem(user, problem_id) if user else DEFAULT_TUTOR_MODE
             scaffold_mode = scaffold_mode_for_user(user) if user else DEFAULT_SCAFFOLD_MODE
             if path == "/api/tutor" and user:
-                payload["_serverLearnerState"] = learning_state_for_user(user)
-                payload["_serverRecentTutorHistory"] = read_user_history(user["id"], HISTORY_CHAR_LIMIT)
+                payload["_serverLearnerState"] = learning_state_for_user(user, problem_id)
+                payload["_serverRecentTutorHistory"] = read_user_history(user["id"], HISTORY_CHAR_LIMIT, problem_id)
             messages = (
                 build_tutor_messages(payload, tutor_mode=tutor_mode, scaffold_mode=scaffold_mode)
                 if path == "/api/tutor"
@@ -1937,7 +2199,7 @@ class TutorHandler(BaseHTTPRequestHandler):
             learner_request = learner_request_from_payload(payload, messages)
             guardrail_used = path == "/api/tutor" and is_solution_request(learner_request)
             content = (
-                solution_request_guardrail_reply(tutor_mode, scaffold_mode, payload.get("_serverLearnerState"))
+                solution_request_guardrail_reply(tutor_mode, scaffold_mode, payload.get("_serverLearnerState"), problem_id)
                 if guardrail_used
                 else stream_chat_text(messages)
             )
@@ -1965,12 +2227,15 @@ class TutorHandler(BaseHTTPRequestHandler):
                 "model": MODEL,
                 "tutor_mode": tutor_mode if path == "/api/tutor" else "",
                 "scaffold_mode": scaffold_mode if path == "/api/tutor" else "",
-                "condition_key": user.get("condition_key", f"{tutor_mode}:{scaffold_mode}") if user else "",
-                "condition_label": user.get("condition_label", condition_label_for_user(user)) if user else "",
+                "experiment_group": experiment_group_for_user(user) if user else "",
+                "experiment_group_label": experiment_group_label(experiment_group_for_user(user)) if user else "",
+                "condition_key": request_condition_key(user, problem_id, tutor_mode) if user else "",
+                "condition_label": request_condition_label(user, problem_id, tutor_mode) if user else "",
                 "learner_state": payload.get("_serverLearnerState") if path == "/api/tutor" else {},
                 "template_used": payload.get("messages") is None,
                 "guardrail_used": guardrail_used,
                 "scaffold_fallback_used": scaffold_fallback_used,
+                "problem": sanitize_problem(payload.get("problem")) if path == "/api/tutor" else {},
                 "learner_request": learner_request,
                 "messages": messages,
                 "raw_prompt": raw_prompt,

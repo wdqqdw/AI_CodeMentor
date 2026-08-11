@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CodeMentor AI</title>
-    <link rel="stylesheet" href="./styles.css?v=code-reset-undo-1" />
+    <link rel="stylesheet" href="./styles.css?v=two-task-experiment-1" />
   </head>
   <body>
     <div class="app-shell">
@@ -23,7 +23,8 @@
           <div class="mode-switch" role="tablist" aria-label="Study view">
             <button class="active" type="button" role="tab" aria-selected="true" data-left-view="quiz">Quiz</button>
             <button type="button" role="tab" aria-selected="false" data-left-view="lesson">Knowledge</button>
-            <button type="button" role="tab" aria-selected="false" data-left-view="practice">Practice</button>
+            <button type="button" role="tab" aria-selected="false" data-left-view="practice">Boggle</button>
+            <button type="button" role="tab" aria-selected="false" data-left-view="word-ladder">Word Ladder</button>
           </div>
         </div>
 
@@ -528,30 +529,15 @@ class Solution:
           <input id="auth-username" name="username" autocomplete="username" placeholder="3-32 letters, numbers, _ . -" required />
           <label for="auth-password">Password</label>
           <input id="auth-password" name="password" type="password" autocomplete="new-password" placeholder="At least 6 characters" required />
-          <fieldset class="tutor-style-selector" id="tutor-style-selector">
-            <legend>Tutor style</legend>
-            <label class="tutor-style-option">
-              <input type="radio" name="tutorMode" value="encouraging" checked />
-              <span>
-                <strong>鼓励型 Tutor</strong>
-                <small>更温和，会多用支持性的语气引导你回答。</small>
-              </span>
-            </label>
-            <label class="tutor-style-option">
-              <input type="radio" name="tutorMode" value="neutral" />
-              <span>
-                <strong>中性 Tutor</strong>
-                <small>更平淡，只给客观提示，不主动鼓励。</small>
-              </span>
-            </label>
-            <p id="tutor-style-note">This choice is permanently bound to the account.</p>
-          </fieldset>
+          <p class="study-assignment-note" id="tutor-style-note">
+            Your study condition is assigned automatically and stays consistent for this account.
+          </p>
           <button id="auth-submit" type="submit">Create account</button>
           <p class="auth-message" id="auth-message" role="status" aria-live="polite"></p>
         </form>
       </section>
     </div>
-    <script src="./problems.js?v=quiz-single-letter-1"></script>
+    <script src="./problems.js?v=word-ladder-experiment-1"></script>
     <script>
       window.CODEMENTOR_CONFIG = {
         backendBaseUrl: "https://normal-appreciation-question-space.trycloudflare.com",
@@ -559,6 +545,6 @@ class Solution:
         activityApiUrl: "https://normal-appreciation-question-space.trycloudflare.com/api/activity",
       };
     </script>
-    <script src="./script.js?v=code-reset-undo-1"></script>
+    <script src="./script.js?v=two-task-experiment-1"></script>
   </body>
 </html>

@@ -2,6 +2,7 @@ window.CODEMENTOR_PROBLEMS = {
   currentProblemId: "boggle_solver",
   markdownProblemPath: "./problems/boggle_solver.md?v=boggle-statement-expand-1",
   quizProblemPath: "./problems/single_letter_finder.md?v=quiz-single-letter-1",
+  wordLadderProblemPath: "./problems/word_ladder.md?v=word-ladder-experiment-1",
   problemCatalog: [
   {
     "id": "array_hashing",

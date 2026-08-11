@@ -66,6 +66,12 @@ const problemStore = window.CODEMENTOR_PROBLEMS || {};
 const problemCatalog = problemStore.problemCatalog || [];
 const practiceProblemPath = problemStore.markdownProblemPath || "./problems/boggle_solver.md";
 const quizProblemPath = problemStore.quizProblemPath || "./problems/single_letter_finder.md";
+const wordLadderProblemPath = problemStore.wordLadderProblemPath || "./problems/word_ladder.md";
+const viewProblemPaths = {
+  quiz: quizProblemPath,
+  practice: practiceProblemPath,
+  "word-ladder": wordLadderProblemPath,
+};
 const fallbackProblem =
   problemStore.items?.[problemStore.currentProblemId] || Object.values(problemStore.items || {})[0];
 let currentProblem = fallbackProblem;
@@ -279,7 +285,7 @@ const setCodeExpanded = (isExpanded) => {
 };
 
 const setLeftView = (view) => {
-  const nextView = ["quiz", "lesson", "practice"].includes(view) ? view : "quiz";
+  const nextView = ["quiz", "lesson", "practice", "word-ladder"].includes(view) ? view : "quiz";
   leftView = nextView;
 
   if (nextView === "lesson") {
@@ -288,7 +294,7 @@ const setLeftView = (view) => {
   }
 
   problemPanel.classList.toggle("lesson-mode", nextView === "lesson");
-  problemPanel.classList.toggle("practice-mode", nextView === "practice" || nextView === "quiz");
+  problemPanel.classList.toggle("practice-mode", nextView === "practice" || nextView === "quiz" || nextView === "word-ladder");
   problemPanel.classList.toggle("quiz-mode", nextView === "quiz");
   modeSwitchButtons.forEach((button) => {
     const isActive = button.dataset.leftView === nextView;
@@ -391,10 +397,12 @@ const setAuthMode = (mode) => {
   authTitle.textContent = authMode === "register" ? "Create your account" : "Log in to continue";
   authSubmit.textContent = authMode === "register" ? "Create account" : "Log in";
   authPassword.autocomplete = authMode === "register" ? "new-password" : "current-password";
-  tutorStyleNote.textContent =
-    authMode === "register"
-      ? "This choice is permanently bound to the account."
-      : "Existing accounts keep their original tutor style. This binds only unbound legacy accounts.";
+  if (tutorStyleNote) {
+    tutorStyleNote.textContent =
+      authMode === "register"
+        ? "Your study condition is assigned automatically and stays consistent for this account."
+        : "Log in to continue with the study condition already assigned to this account.";
+  }
   authModeButtons.forEach((button) => {
     const isActive = button.dataset.authMode === authMode;
     button.classList.toggle("active", isActive);
@@ -426,7 +434,7 @@ const updateAccountStatus = () => {
 
   accountStatus.hidden = false;
   accountName.textContent = authSession.user.username;
-  accountTutorMode.textContent = authSession.user.tutor_mode_label || "Tutor";
+  accountTutorMode.textContent = authSession.user.study_label || "Study Session";
 };
 
 const escapeHtml = (value) =>
@@ -610,7 +618,7 @@ const setBrowserState = (state, mode = "push") => {
   window.history[method](state, "", url);
 };
 
-const getProblemPathForLeftView = (view) => (view === "quiz" ? quizProblemPath : practiceProblemPath);
+const getProblemPathForLeftView = (view) => viewProblemPaths[view] || practiceProblemPath;
 
 const loadViewProblem = async (view, { force = false } = {}) => {
   const problemPath = getProblemPathForLeftView(view);
@@ -1626,23 +1634,41 @@ const buildLineNumberedSource = (source) =>
     .map((line, index) => `${String(index + 1).padStart(4, " ")} | ${line}`)
     .join("\n");
 
+const buildLearningContext = () => {
+  if (leftView === "quiz") {
+    return {
+      view: leftView,
+      title: "Single Letter Finder programming quiz",
+      topics: ["2D grid traversal", "string length", "membership check", "duplicate removal"],
+    };
+  }
+
+  if (leftView === "lesson") {
+    return {
+      view: leftView,
+      title: "Boggle Solver prerequisite lesson",
+      topics: ["2D grid coordinates", "8-direction movement", "DFS", "backtracking", "prefix pruning"],
+    };
+  }
+
+  if (currentProblem?.id === "word_ladder") {
+    return {
+      view: leftView,
+      title: "Word Ladder coding practice",
+      topics: ["implicit graph", "BFS", "shortest path", "one-letter transformations", "visited set"],
+    };
+  }
+
+  return {
+    view: leftView,
+    title: "Boggle Solver coding practice",
+    topics: ["2D grid search", "8-direction movement", "DFS", "backtracking", "prefix pruning", "test feedback"],
+  };
+};
+
 const buildTutorPayload = (message) => ({
   message,
-  learning: {
-    view: leftView,
-    title:
-      leftView === "quiz"
-        ? "Single Letter Finder programming quiz"
-        : leftView === "lesson"
-          ? "Boggle Solver prerequisite lesson"
-          : "Boggle Solver coding practice",
-    topics:
-      leftView === "quiz"
-        ? ["2D grid traversal", "string length", "membership check", "duplicate removal"]
-        : leftView === "lesson"
-        ? ["2D grid coordinates", "8-direction movement", "DFS", "backtracking", "prefix pruning"]
-        : ["implementation", "test feedback", "traceback debugging"],
-  },
+  learning: buildLearningContext(),
   problem: buildProblemContext(),
   code: {
     language: languageSelect.value,
@@ -2220,7 +2246,7 @@ authForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const username = authUsername.value.trim();
   const password = authPassword.value;
-  const tutorMode = authForm.elements.tutorMode?.value || "encouraging";
+  const tutorMode = authForm.elements.tutorMode?.value || "";
   if (!username || !password) {
     setAuthMessage("Please enter both username and password.", "fail");
     return;
@@ -2241,7 +2267,7 @@ authForm.addEventListener("submit", async (event) => {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ username, password, tutorMode }),
+      body: JSON.stringify(tutorMode ? { username, password, tutorMode } : { username, password }),
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
@@ -2338,6 +2364,9 @@ const initializeApp = async () => {
     viewProblemCache[practiceProblemPath] = await loadConfiguredProblem();
     if (quizProblemPath) {
       viewProblemCache[quizProblemPath] = await fetchMarkdownProblem(quizProblemPath);
+    }
+    if (wordLadderProblemPath) {
+      viewProblemCache[wordLadderProblemPath] = await fetchMarkdownProblem(wordLadderProblemPath);
     }
     activeProblemPath = quizProblemPath || practiceProblemPath;
     setCurrentProblem(viewProblemCache[activeProblemPath] || viewProblemCache[practiceProblemPath]);

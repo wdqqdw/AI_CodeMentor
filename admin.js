@@ -101,11 +101,11 @@ const renderMetrics = (accounts) => {
       acc.events += Number(account.total_events || 0);
       acc.chats += Number(account.chat_count || 0) + Number(account.chat_error_count || 0);
       acc.code += Number(account.run_count || 0) + Number(account.submit_count || 0);
-      if (account.tutor_mode === "encouraging") {
-        acc.encouraging += 1;
+      if (account.experiment_group === "group_a") {
+        acc.groupA += 1;
       }
-      if (account.tutor_mode === "neutral") {
-        acc.neutral += 1;
+      if (account.experiment_group === "group_b") {
+        acc.groupB += 1;
       }
       if (account.scaffold_mode === "fixed_low") {
         acc.fixedLow += 1;
@@ -118,7 +118,7 @@ const renderMetrics = (accounts) => {
       }
       return acc;
     },
-    { accounts: 0, events: 0, chats: 0, code: 0, encouraging: 0, neutral: 0, fixedLow: 0, fixedHigh: 0, adaptive: 0 },
+    { accounts: 0, events: 0, chats: 0, code: 0, groupA: 0, groupB: 0, fixedLow: 0, fixedHigh: 0, adaptive: 0 },
   );
 
   metricGrid.innerHTML = [
@@ -126,6 +126,8 @@ const renderMetrics = (accounts) => {
     ["Total events", totals.events],
     ["Tutor chats", totals.chats],
     ["Run / Submit", totals.code],
+    ["Group A", totals.groupA],
+    ["Group B", totals.groupB],
     ["Low scaffold", totals.fixedLow],
     ["High scaffold", totals.fixedHigh],
     ["Adaptive", totals.adaptive],
@@ -166,7 +168,9 @@ const renderAccounts = (accounts) => {
           <div class="account-main">
             <strong>${escapeHtml(account.username || "-")}</strong>
             <span>${escapeHtml(account.user_id || "-")}</span>
-            <span class="mode-pill">${escapeHtml(account.tutor_mode_label || account.tutor_mode || "-")}</span>
+            <span class="mode-pill">${escapeHtml(account.experiment_group_label || account.experiment_group || "-")}</span>
+            <span class="mode-pill">Boggle: ${escapeHtml(account.boggle_tutor_mode_label || account.boggle_tutor_mode || "-")}</span>
+            <span class="mode-pill">Word Ladder: ${escapeHtml(account.word_ladder_tutor_mode_label || account.word_ladder_tutor_mode || "-")}</span>
             <span class="mode-pill">${escapeHtml(account.scaffold_mode_label || account.scaffold_mode || "-")}</span>
             <span>${escapeHtml(account.condition_key || "-")}</span>
           </div>
