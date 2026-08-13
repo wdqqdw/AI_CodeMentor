@@ -169,6 +169,32 @@ svg {
   box-shadow: 0 5px 14px rgba(28, 8, 70, 0.22);
 }
 
+.mode-switch button:disabled,
+.mode-switch button.locked {
+  cursor: not-allowed;
+  color: rgba(255, 255, 255, 0.46);
+  background: transparent;
+  box-shadow: none;
+}
+
+.knowledge-gate-note {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 11px;
+  color: #fff4c2;
+  background: rgba(255, 178, 77, 0.14);
+  border: 1px solid rgba(255, 218, 137, 0.32);
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 840;
+  white-space: nowrap;
+}
+
+.knowledge-gate-note[hidden] {
+  display: none;
+}
+
 .view-timer {
   height: 32px;
   display: inline-flex;
@@ -724,6 +750,7 @@ svg {
 }
 
 .backtrack-strip,
+.pseudo-flow,
 .mistake-list {
   display: flex;
   flex-wrap: wrap;
@@ -732,6 +759,7 @@ svg {
 }
 
 .backtrack-strip span,
+.pseudo-flow span,
 .mistake-list span {
   min-height: 34px;
   display: inline-flex;
@@ -743,6 +771,45 @@ svg {
   border-radius: 999px;
   font-size: 0.78rem;
   font-weight: 760;
+}
+
+.pseudo-flow span {
+  color: #4c258e;
+  background: #f3edff;
+  border-color: #d8c8ff;
+  font-family: var(--mono);
+}
+
+.prefix-demo {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 13px;
+}
+
+.prefix-demo div {
+  min-width: 0;
+  padding: 12px;
+  background: #fbfaff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.prefix-demo strong,
+.prefix-demo span {
+  display: block;
+}
+
+.prefix-demo strong {
+  margin-bottom: 6px;
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+
+.prefix-demo span {
+  color: #3f375d;
+  font-size: 0.86rem;
+  line-height: 1.5;
 }
 
 .lesson-note {

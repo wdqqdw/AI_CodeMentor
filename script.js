@@ -53,6 +53,7 @@ const accountName = document.querySelector("#account-name");
 const accountTutorMode = document.querySelector("#account-tutor-mode");
 const logoutButton = document.querySelector("#logout-button");
 const modeSwitchButtons = document.querySelectorAll("[data-left-view]");
+const knowledgeGateNote = document.querySelector("#knowledge-gate-note");
 const viewTimer = document.querySelector("#view-timer");
 const viewTimerLabel = document.querySelector("#view-timer-label");
 const viewTimerValue = document.querySelector("#view-timer-value");
@@ -68,13 +69,12 @@ const viewTimeStoragePrefix = "codementor.viewTimePending.v1";
 const codeDraftSaveDelayMs = 150;
 const codeUndoLimit = 80;
 const viewTimeFlushIntervalMs = 30000;
+const requiredKnowledgeSeconds = 180;
 const problemStore = window.CODEMENTOR_PROBLEMS || {};
 const problemCatalog = problemStore.problemCatalog || [];
 const practiceProblemPath = problemStore.markdownProblemPath || "./problems/boggle_solver.md";
-const quizProblemPath = problemStore.quizProblemPath || "./problems/single_letter_finder.md";
 const wordLadderProblemPath = problemStore.wordLadderProblemPath || "./problems/word_ladder.md";
 const viewProblemPaths = {
-  quiz: quizProblemPath,
   practice: practiceProblemPath,
   "word-ladder": wordLadderProblemPath,
 };
@@ -111,13 +111,12 @@ let authMode = "register";
 let authSession = null;
 let activeProblemPath = practiceProblemPath || "";
 let expandedCatalogCategory = "";
-let leftView = "quiz";
+let leftView = "lesson";
 let codeDraftSaveTimer = 0;
 let codeUndoStack = [];
 let lastCodeSnapshot = codeEditor.value;
 let suppressCodeHistory = false;
 const viewTimerLabels = {
-  quiz: "Quiz",
   lesson: "Knowledge",
   practice: "Boggle",
   "word-ladder": "Word Ladder",
@@ -303,8 +302,44 @@ const setCodeExpanded = (isExpanded) => {
   window.requestAnimationFrame(syncEditor);
 };
 
+const getKnowledgeSeconds = () => getDisplayedViewSeconds("lesson");
+
+const knowledgeIsUnlocked = () => getKnowledgeSeconds() >= requiredKnowledgeSeconds;
+
+const formatGateSeconds = (seconds) => {
+  const safeSeconds = Math.max(0, Math.ceil(Number(seconds) || 0));
+  const minutes = Math.floor(safeSeconds / 60);
+  const rest = String(safeSeconds % 60).padStart(2, "0");
+  return `${minutes}:${rest}`;
+};
+
+const updateKnowledgeGate = () => {
+  const unlocked = knowledgeIsUnlocked();
+  const remaining = Math.max(0, requiredKnowledgeSeconds - getKnowledgeSeconds());
+  modeSwitchButtons.forEach((button) => {
+    const gated = button.dataset.leftView !== "lesson";
+    button.disabled = Boolean(authSession?.token) && gated && !unlocked;
+    button.classList.toggle("locked", Boolean(authSession?.token) && gated && !unlocked);
+    if (gated && !unlocked) {
+      button.setAttribute("title", `Read Knowledge for ${formatGateSeconds(remaining)} more to unlock.`);
+    } else {
+      button.removeAttribute("title");
+    }
+  });
+
+  if (knowledgeGateNote) {
+    knowledgeGateNote.hidden = !authSession?.token || unlocked;
+    knowledgeGateNote.textContent = unlocked
+      ? ""
+      : `Knowledge unlocks practice in ${formatGateSeconds(remaining)}`;
+  }
+};
+
+const canOpenStudyView = (view) => view === "lesson" || !authSession?.token || knowledgeIsUnlocked();
+
 const setLeftView = (view) => {
-  const nextView = ["quiz", "lesson", "practice", "word-ladder"].includes(view) ? view : "quiz";
+  const candidateView = ["lesson", "practice", "word-ladder"].includes(view) ? view : "lesson";
+  const nextView = canOpenStudyView(candidateView) ? candidateView : "lesson";
   if (nextView !== leftView) {
     pauseViewTimer({ flush: true });
   }
@@ -316,8 +351,7 @@ const setLeftView = (view) => {
   }
 
   problemPanel.classList.toggle("lesson-mode", nextView === "lesson");
-  problemPanel.classList.toggle("practice-mode", nextView === "practice" || nextView === "quiz" || nextView === "word-ladder");
-  problemPanel.classList.toggle("quiz-mode", nextView === "quiz");
+  problemPanel.classList.toggle("practice-mode", nextView === "practice" || nextView === "word-ladder");
   modeSwitchButtons.forEach((button) => {
     const isActive = button.dataset.leftView === nextView;
     button.classList.toggle("active", isActive);
@@ -329,6 +363,7 @@ const setLeftView = (view) => {
   }
 
   startViewTimer(nextView);
+  updateKnowledgeGate();
 };
 
 const setTraceback = (text = "", summary = "No traceback", state = "") => {
@@ -475,6 +510,7 @@ const updateViewTimerDisplay = () => {
   viewTimerLabel.textContent = viewTimerLabels[leftView] || "Current";
   viewTimerValue.textContent = `${getDisplayedViewSeconds(leftView)}s`;
   viewTimer.setAttribute("title", totalsForTitle);
+  updateKnowledgeGate();
 };
 
 const postViewTimeDelta = async (view, seconds, { keepalive = false } = {}) => {
@@ -608,6 +644,7 @@ const loadViewTimes = async () => {
     ),
   );
   updateViewTimerDisplay();
+  updateKnowledgeGate();
 };
 
 const setChatEnabled = (isEnabled) => {
@@ -1880,14 +1917,6 @@ const buildLineNumberedSource = (source) =>
     .join("\n");
 
 const buildLearningContext = () => {
-  if (leftView === "quiz") {
-    return {
-      view: leftView,
-      title: "Single Letter Finder programming quiz",
-      topics: ["2D grid traversal", "string length", "membership check", "duplicate removal"],
-    };
-  }
-
   if (leftView === "lesson") {
     return {
       view: leftView,
@@ -2130,6 +2159,11 @@ tabButtons.forEach((button) => {
 modeSwitchButtons.forEach((button) => {
   button.addEventListener("click", async () => {
     const nextView = button.dataset.leftView;
+    if (!canOpenStudyView(nextView)) {
+      setLeftView("lesson");
+      updateKnowledgeGate();
+      return;
+    }
     if (nextView !== "lesson") {
       await loadViewProblem(nextView);
     } else {
@@ -2363,7 +2397,11 @@ const completeAuth = async (session) => {
   hideAuthGate();
   restoreCodeDraft();
   await loadViewTimes();
-  startViewTimer(leftView);
+  if (!knowledgeIsUnlocked() && leftView !== "lesson") {
+    setLeftView("lesson");
+  } else {
+    startViewTimer(leftView);
+  }
   try {
     await loadAccountHistory();
   } catch (error) {
@@ -2396,7 +2434,11 @@ const verifyStoredSession = async () => {
     hideAuthGate();
     restoreCodeDraft();
     await loadViewTimes();
-    startViewTimer(leftView);
+    if (!knowledgeIsUnlocked() && leftView !== "lesson") {
+      setLeftView("lesson");
+    } else {
+      startViewTimer(leftView);
+    }
     await loadAccountHistory();
   } catch (error) {
     pauseViewTimer({ flush: false });
@@ -2567,6 +2609,7 @@ logoutButton.addEventListener("click", async () => {
 
   clearAuthSession();
   window.clearTimeout(viewTimeFlushId);
+  setLeftView("lesson");
   updateViewTimerDisplay();
   updateAccountStatus();
   resetChatThread();
@@ -2638,13 +2681,10 @@ const hydrateInitialTutorMessage = () => {
 const initializeApp = async () => {
   try {
     viewProblemCache[practiceProblemPath] = await loadConfiguredProblem();
-    if (quizProblemPath) {
-      viewProblemCache[quizProblemPath] = await fetchMarkdownProblem(quizProblemPath);
-    }
     if (wordLadderProblemPath) {
       viewProblemCache[wordLadderProblemPath] = await fetchMarkdownProblem(wordLadderProblemPath);
     }
-    activeProblemPath = quizProblemPath || practiceProblemPath;
+    activeProblemPath = practiceProblemPath;
     setCurrentProblem(viewProblemCache[activeProblemPath] || viewProblemCache[practiceProblemPath]);
   } catch (error) {
     console.warn(error);
@@ -2655,7 +2695,7 @@ const initializeApp = async () => {
   hydrateInitialTutorMessage();
   renderProblem();
   renderTestcases();
-  setLeftView("quiz");
+  setLeftView("lesson");
   setStatus("Ready");
   syncEditor();
   await verifyStoredSession();

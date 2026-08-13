@@ -1,8 +1,8 @@
 # AI_CodeMentor
 
-AI_CodeMentor is an AI-assisted coding practice prototype. The current public page starts with a short **Single Letter Finder / 单字母查找** quiz, then supports a prerequisite knowledge view and two deeper coding tasks: **Boggle Solver / 棋盘单词搜索** and **Word Ladder / 单词接龙**. Each task uses the Python coding panel, testcase feedback, a full Traceback panel for runtime errors, and the AI Tutor chat panel.
+AI_CodeMentor is an AI-assisted coding practice prototype. The current public page starts with a prerequisite **Knowledge** view, then unlocks two coding tasks after the learner has spent at least 3 minutes reading: **Boggle Solver / 棋盘单词搜索** and **Word Ladder / 单词接龙**. Each task uses the Python coding panel, testcase feedback, a full Traceback panel for runtime errors, and the AI Tutor chat panel.
 
-Last updated: 2026-08-11
+Last updated: 2026-08-13
 
 ## Quick Links
 
@@ -17,10 +17,11 @@ Last updated: 2026-08-11
 ## Current Deployment
 
 - Frontend hosting: GitHub Pages.
-- Entry quiz: Single Letter Finder. Learners first complete a very small 2D-board task that only asks them to return length-1 words appearing on the board, checking basic traversal, membership, and duplicate handling.
 - Main exercises: Boggle Solver and Word Ladder.
-- Default entry view: Quiz. Learners can then switch to Knowledge for a prerequisite lesson on 2D grids, DFS, backtracking, prefix pruning, implicit word graphs, BFS shortest paths, and how/when to use AI Tutor, or switch to Boggle / Word Ladder from the top-left segmented control.
+- Default entry view: Knowledge. The Quiz view has been removed.
+- Knowledge gate: enabled. After login, learners must accumulate at least 180 seconds on the Knowledge view before Boggle and Word Ladder become available. The accumulated Knowledge time is stored per account and persists across refreshes and later logins.
 - View timers: enabled. After login, the top bar shows the current left-pane view's accumulated time in seconds. Timing pauses when learners switch away from a view or the page is hidden, and resumes from persisted per-account totals on later logins.
+- Knowledge lesson: expanded. It now includes a beginner-friendly Boggle search outline close to pseudocode, plus stronger Trie and prefix-pruning explanations before the coding tasks.
 - Knowledge AI Tutor guide: compact narrative text. It tells learners that current problem context, page type, code, language, pass rate, public hints, and latest traceback are visible to the Tutor automatically and do not need to be copied manually.
 - Practice statement language: bilingual English/Chinese problem descriptions for Boggle Solver and Word Ladder.
 - Text examples: enabled. Boggle Solver and Word Ladder each include six pure-text examples in addition to their diagrammed examples.
@@ -51,7 +52,7 @@ Last updated: 2026-08-11
 - Word Ladder visual examples: enabled. The task statement includes SVG diagrams for the shortest path length and the one-letter neighbor rule, followed by pure-text examples covering shortcuts, direct one-letter transformations, missing end words, and length filtering.
 - Word Ladder testcases: 30 cases covering direct transformations, missing end words, multiple shortest paths, length filtering, repeated dictionary entries, and longer transformation chains.
 - Private account summary CSV: enabled on the backend. The server maintains `account_summary.csv` inside the private backend data directory with usernames, study group, task-specific Tutor styles, scaffold assignment, password hashes, activity counts, best score, latest problem, and timestamps.
-- Private account summary CSV timing fields: enabled. The CSV includes total seconds for Quiz, Knowledge, Boggle, and Word Ladder views.
+- Private account summary CSV timing fields: enabled. The CSV includes total seconds for Knowledge, Boggle, and Word Ladder views; older records may still contain legacy Quiz timing fields.
 
 ## Important Notes
 
@@ -71,8 +72,8 @@ Last updated: 2026-08-11
 - `index.html`: main GitHub Pages entry.
 - `styles.css`: main application layout and visual design.
 - `script.js`: coding panel, test runner, Traceback tab, AI Tutor chat, and UI interactions.
-- `index.html` mode switch: Quiz, Knowledge, Boggle, and Word Ladder share the left pane while AI Tutor remains visible on the right.
-- `index.html` knowledge view: embedded prerequisite lesson covering Boggle Solver's grid DFS/backtracking concepts and Word Ladder's implicit-graph BFS concepts before learners enter the full coding panel.
+- `index.html` mode switch: Knowledge, Boggle, and Word Ladder share the left pane while AI Tutor remains visible on the right.
+- `index.html` knowledge view: embedded prerequisite lesson covering Boggle Solver's grid DFS/backtracking concepts, a baseline walk-the-grid search plan, Trie/prefix pruning, and Word Ladder's implicit-graph BFS concepts before learners enter the full coding panel.
 - `problems.js`: generated/static problem catalog used by the page.
 - `problems/*.md`: editable problem definitions.
 - `backend/`: backend reference code and prompt templates that are safe to keep in the public repo.

@@ -21,13 +21,15 @@
             <span class="brand-name">CodeMentor <strong>AI</strong></span>
           </div>
           <div class="mode-switch" role="tablist" aria-label="Study view">
-            <button class="active" type="button" role="tab" aria-selected="true" data-left-view="quiz">Quiz</button>
-            <button type="button" role="tab" aria-selected="false" data-left-view="lesson">Knowledge</button>
+            <button class="active" type="button" role="tab" aria-selected="true" data-left-view="lesson">Knowledge</button>
             <button type="button" role="tab" aria-selected="false" data-left-view="practice">Boggle</button>
             <button type="button" role="tab" aria-selected="false" data-left-view="word-ladder">Word Ladder</button>
           </div>
+          <div class="knowledge-gate-note" id="knowledge-gate-note" aria-live="polite" hidden>
+            Read Knowledge for 3:00 to unlock practice.
+          </div>
           <div class="view-timer" id="view-timer" aria-live="polite" hidden>
-            <span id="view-timer-label">Quiz</span>
+            <span id="view-timer-label">Knowledge</span>
             <strong id="view-timer-value">0s</strong>
           </div>
         </div>
@@ -44,12 +46,16 @@
         <section class="problem-panel lesson-mode" aria-labelledby="problem-title">
           <section class="lesson-pane" id="lesson-pane" aria-labelledby="lesson-title">
             <div class="lesson-hero">
-              <span class="lesson-kicker">Knowledge First · about 10 minutes</span>
+              <span class="lesson-kicker">Knowledge First · required 3 minutes</span>
               <h1 id="lesson-title">Boggle Solver 与 Word Ladder 预备知识</h1>
               <p>
                 这页用于做题前快速建立共同语言。你会先理解 Boggle Solver 需要的二维棋盘、相邻格移动、DFS、回溯和前缀剪枝，
                 也会理解 Word Ladder 需要的隐式图、最短路径和 BFS。阅读时不用记住某一种标准写法，重点是弄清楚
                 “状态如何变化”“什么时候停止搜索”以及“为什么某种搜索顺序能保证答案最短”。
+              </p>
+              <p class="lesson-note">
+                登录后需要在 Knowledge 页面累计阅读满 3 分钟，Boggle 和 Word Ladder 才会解锁。这个时间按账号保留，
+                刷新页面或重新登录不会重新计时。
               </p>
             </div>
 
@@ -200,6 +206,41 @@
               <div class="lesson-section-heading">
                 <span>5</span>
                 <div>
+                  <h2>基础思路：先写一个能走格子的搜索</h2>
+                  <p>
+                    在考虑速度之前，可以先用一个朴素但清晰的思路把规则写对：对每个候选词，从棋盘上的每个格子尝试出发；
+                    走路径时记录当前已经访问过哪些格子；如果当前字母匹配，就继续检查周围 8 个邻居。这个版本不需要先考虑时间复杂度，
+                    它的价值是帮助你把“起点、邻居、访问状态、成功条件”这些基本动作想清楚。
+                  </p>
+                </div>
+              </div>
+              <ol class="lesson-steps">
+                <li><strong>遍历候选词：</strong>一次只关心一个目标词，先判断它能不能在棋盘上形成。</li>
+                <li><strong>遍历每个格子：</strong>每个格子都可能是这个词的第一个字母。</li>
+                <li><strong>进入搜索函数：</strong>搜索状态可以包含当前位置、目标词匹配到第几个字符、当前路径用过的格子。</li>
+                <li><strong>检查当前格：</strong>越界、已经用过、字母不匹配时，这条路直接失败。</li>
+                <li><strong>继续找邻居：</strong>当前字母匹配后，把格子标记为已访问，再尝试 8 个方向里的下一个格子。</li>
+                <li><strong>恢复现场：</strong>这条分支结束后，把当前格从已访问集合里撤销，让别的路径可以继续使用它。</li>
+                <li><strong>收集结果：</strong>如果一个词找到至少一条合法路径，就把它加入结果；同一个词只加入一次。</li>
+              </ol>
+              <div class="pseudo-flow" aria-label="Basic search outline">
+                <span>for each word</span>
+                <span>for each start cell</span>
+                <span>search(row, col, index, visited)</span>
+                <span>check boundary / used / character</span>
+                <span>try 8 neighbors</span>
+                <span>unmark visited</span>
+              </div>
+              <p class="lesson-note">
+                这个思路接近伪代码，但故意不写成完整程序。你可以把它当成代码框里的路线图：先让小测试通过，
+                再根据后续测试结果决定是否需要加前缀剪枝。
+              </p>
+            </section>
+
+            <section class="lesson-section">
+              <div class="lesson-section-heading">
+                <span>6</span>
+                <div>
                   <h2>从逐词搜索到前缀剪枝</h2>
                   <p>
                     最直接的想法是：对每个候选词，都在棋盘上搜索一遍。这个方法容易理解，也适合作为第一版思路。
@@ -229,7 +270,70 @@
 
             <section class="lesson-section">
               <div class="lesson-section-heading">
-                <span>6</span>
+                <span>7</span>
+                <div>
+                  <h2>Trie：把字典变成“前缀地图”</h2>
+                  <p>
+                    Trie，也叫前缀树，可以把很多单词共享的开头合并在一起。比如 <code>sea</code>、<code>seat</code>、
+                    <code>search</code> 都从 <code>s → e</code> 开始，Trie 只需要保存一次这个共同前缀。搜索棋盘时，
+                    当前路径每多走一个字母，就沿着 Trie 往下一层走一步。
+                  </p>
+                </div>
+              </div>
+              <div class="concept-grid">
+                <article>
+                  <h3>节点表示前缀</h3>
+                  <p>从根节点走到某个节点，对应目前路径形成的字符串前缀。</p>
+                </article>
+                <article>
+                  <h3>边表示下一个字母</h3>
+                  <p>如果当前 Trie 节点没有某个字母的分支，说明继续走这个字母没有意义。</p>
+                </article>
+                <article>
+                  <h3>终止标记表示单词</h3>
+                  <p>某个节点可以标记“到这里正好是一个完整单词”，搜索到这里就可以收集答案。</p>
+                </article>
+              </div>
+              <p class="lesson-note">
+                Trie 的关键不是背代码，而是理解它解决了什么问题：当棋盘路径形成的前缀根本不在字典里时，
+                立刻停止这条分支，不再浪费时间探索更长路径。
+              </p>
+            </section>
+
+            <section class="lesson-section">
+              <div class="lesson-section-heading">
+                <span>8</span>
+                <div>
+                  <h2>前缀剪枝：什么时候可以提前停</h2>
+                  <p>
+                    前缀剪枝的判断很简单：当前路径形成的字符串，如果不是任何候选词的前缀，那么再往后加字母也不可能变成候选词。
+                    这时可以直接回退。它不会改变答案，只会减少无效搜索。
+                  </p>
+                </div>
+              </div>
+              <div class="prefix-demo" aria-label="Prefix pruning examples">
+                <div>
+                  <strong>继续搜索</strong>
+                  <span><code>se</code> 是 <code>seat</code>、<code>search</code> 的前缀</span>
+                </div>
+                <div>
+                  <strong>收集单词</strong>
+                  <span><code>sea</code> 本身是一个词，也可能继续形成更长词</span>
+                </div>
+                <div>
+                  <strong>立刻剪掉</strong>
+                  <span><code>sx</code> 不是任何词的前缀，后面不用再走</span>
+                </div>
+              </div>
+              <p class="lesson-note">
+                用 Trie 做剪枝时，搜索状态里除了棋盘位置、匹配进度、访问集合，还可以带上“当前 Trie 节点”。
+                这样不用反复拼接字符串再去查前缀，搜索会更自然。
+              </p>
+            </section>
+
+            <section class="lesson-section">
+              <div class="lesson-section-heading">
+                <span>9</span>
                 <div>
                   <h2>复杂度直觉：为什么朴素方法会慢</h2>
                   <p>
@@ -256,7 +360,7 @@
 
             <section class="lesson-section">
               <div class="lesson-section-heading">
-                <span>7</span>
+                <span>10</span>
                 <div>
                   <h2>做题前检查表</h2>
                   <p>开始写代码前，先确认自己能回答这些问题。回答越清楚，后面的调试成本越低。</p>
@@ -274,7 +378,7 @@
 
             <section class="lesson-section">
               <div class="lesson-section-heading">
-                <span>8</span>
+                <span>11</span>
                 <div>
                   <h2>常见错误</h2>
                   <p>这道题的难点不在语法，而在状态管理。下面这些错误很适合用测试用例逐步排查。</p>
@@ -292,7 +396,7 @@
 
             <section class="lesson-section">
               <div class="lesson-section-heading">
-                <span>9</span>
+                <span>12</span>
                 <div>
                   <h2>Word Ladder：把单词看成图上的点</h2>
                   <p>
@@ -324,7 +428,7 @@
 
             <section class="lesson-section">
               <div class="lesson-section-heading">
-                <span>10</span>
+                <span>13</span>
                 <div>
                   <h2>为什么 Word Ladder 适合 BFS</h2>
                   <p>
@@ -348,7 +452,7 @@
 
             <section class="lesson-section">
               <div class="lesson-section-heading">
-                <span>11</span>
+                <span>14</span>
                 <div>
                   <h2>如何准确判断一步转换</h2>
                   <p>
@@ -379,7 +483,7 @@
 
             <section class="lesson-section">
               <div class="lesson-section-heading">
-                <span>12</span>
+                <span>15</span>
                 <div>
                   <h2>两道题的核心区别</h2>
                   <p>
