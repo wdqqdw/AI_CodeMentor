@@ -1,6 +1,6 @@
 # AI_CodeMentor
 
-AI_CodeMentor is an AI-assisted coding practice prototype. The current public page starts with a prerequisite **Knowledge** view, then unlocks two coding tasks after the learner has spent at least 3 minutes reading: **Boggle Solver / 棋盘单词搜索** and **Word Ladder / 单词接龙**. Each task uses the Python coding panel, testcase feedback, a full Traceback panel for runtime errors, and the AI Tutor chat panel.
+AI_CodeMentor is an AI-assisted coding practice prototype. The current public page starts with a prerequisite **Knowledge** view, then unlocks two coding tasks after the learner has spent at least 6 minutes reading: **Boggle Solver / 棋盘单词搜索** and **Word Ladder / 单词接龙**. Each task uses the Python coding panel, testcase feedback, a full Traceback panel for runtime errors, and the AI Tutor chat panel.
 
 Last updated: 2026-08-13
 
@@ -19,7 +19,7 @@ Last updated: 2026-08-13
 - Frontend hosting: GitHub Pages.
 - Main exercises: Boggle Solver and Word Ladder.
 - Default entry view: Knowledge. The Quiz view has been removed.
-- Knowledge gate: enabled. After login, learners must accumulate at least 180 seconds on the Knowledge view before Boggle and Word Ladder become available. The accumulated Knowledge time is stored per account and persists across refreshes and later logins.
+- Knowledge gate: enabled. After login, learners must accumulate at least 360 seconds on the Knowledge view before Boggle and Word Ladder become available. The accumulated Knowledge time is stored per account and persists across refreshes and later logins. After unlocking, learners can freely switch back to Knowledge for review.
 - View timers: enabled. After login, the top bar shows the current left-pane view's accumulated time in seconds. Timing pauses when learners switch away from a view or the page is hidden, and resumes from persisted per-account totals on later logins.
 - Knowledge lesson: expanded. It now includes a beginner-friendly Boggle search outline close to pseudocode, plus stronger Trie and prefix-pruning explanations before the coding tasks.
 - Knowledge AI Tutor guide: compact narrative text. It tells learners that current problem context, page type, code, language, pass rate, public hints, and latest traceback are visible to the Tutor automatically and do not need to be copied manually.
