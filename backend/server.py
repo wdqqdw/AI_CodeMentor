@@ -658,45 +658,45 @@ def solution_request_guardrail_reply(
     if low_support:
         if problem_key == "word_ladder":
             if mode == "neutral":
-                return "不能提供代码、最终答案或可复制实现。先把问题缩小到一步：从当前单词出发，哪些字典词只差一个字符？"
-            return "我不能提供代码、最终答案或可复制实现。先把问题缩小到一步：从当前单词出发，你觉得哪些字典词只差一个字符？"
+                return "不能提供完整代码、最终答案或可复制实现。先把问题缩小到一处局部判断：`diff == 1` 表示合法邻居，这个判断应放在哪个候选词检查附近？"
+            return "我不能提供完整代码、最终答案或可复制实现，但可以给一个很小的局部线索。`diff == 1` 表示合法邻居，你觉得这个判断应放在哪个候选词检查附近？"
         if mode == "neutral":
-            return "不能提供代码、最终答案或可复制实现。先把问题缩小到一步：从棋盘某个格子出发，下一步有哪些相邻格可以选择？"
-        return "我不能提供代码、最终答案或可复制实现。先把问题缩小到一步：从棋盘某个格子出发，你觉得下一步有哪些相邻格可以选择？"
+            return "不能提供完整代码、最终答案或可复制实现。先把问题缩小到一处局部判断：`board[r][c] == word[pos]` 检查当前格是否匹配，这个 pos 应该何时变化？"
+        return "我不能提供完整代码、最终答案或可复制实现，但可以给一个很小的局部线索。`board[r][c] == word[pos]` 检查当前格是否匹配，你觉得 pos 应该何时变化？"
 
     if attempt_count == 0:
         if problem_key == "word_ladder":
             if mode == "neutral":
-                return "完整代码和可复制答案不能提供。先定位当前单词、候选邻居和层数记录；如果已有代码，可以按行号检查一个局部位置。你现在想先看哪一小段逻辑？"
-            return "我理解你想快一点看到代码，但完整代码和可复制答案不能提供。先定位当前单词、候选邻居和层数记录；如果你已有代码，我可以按行号帮你看一个局部位置。你想先看哪一小段逻辑？"
+                return "完整代码和可复制答案不能提供，但可以给框架性局部片段。邻居筛选附近可保持这三件事分开：\n`diff = ...`\n`if diff == 1 and candidate not in seen:`\n`    # enqueue candidate with next depth`\n先检查层数是否随入队同步。"
+            return "我理解你想快一点看到代码，但完整代码和可复制答案不能提供。邻居筛选附近可以先保持这三件事分开：\n`diff = ...`\n`if diff == 1 and candidate not in seen:`\n`    # enqueue candidate with next depth`\n先检查层数是否随入队同步。"
         if mode == "neutral":
-            return "完整代码和可复制答案不能提供。先定位起点选择和八方向候选；如果已有代码，可以按行号检查一个局部位置。你现在想先看哪一小段逻辑？"
-        return "我理解你想快一点看到代码，但完整代码和可复制答案不能提供。先定位起点选择和八方向候选；如果你已有代码，我可以按行号帮你看一个局部位置。你想先看哪一小段逻辑？"
+            return "完整代码和可复制答案不能提供，但可以给框架性局部片段。相邻格检查附近可保持这三件事分开：\n`if not inside(r, c): ...`\n`if board[r][c] != word[pos]: ...`\n`# try neighbors with pos + 1`\n先检查 pos 是否只在进入下一格时增加。"
+        return "我理解你想快一点看到代码，但完整代码和可复制答案不能提供。相邻格检查附近可以先保持这三件事分开：\n`if not inside(r, c): ...`\n`if board[r][c] != word[pos]: ...`\n`# try neighbors with pos + 1`\n先检查 pos 是否只在进入下一格时增加。"
 
     if mode == "neutral":
         if problem_key == "word_ladder":
             return (
-                "代码、最终答案和详细实现结构不能提供。"
-                "可以只做一个局部修复判断：先检查当前搜索是否按层推进，再看访问标记是否在入队时更新。"
-                "需要先扩展哪一小段邻居筛选逻辑？"
+                "完整代码、最终答案和可复制实现不能提供。"
+                "邻居筛选可以只看这个局部框架：\n`diff = ...`\n`if diff == 1 and candidate not in seen:`\n`    # enqueue candidate with next depth`\n"
+                "先检查访问标记是否在入队时更新。"
             )
         return (
-            "代码、最终答案和详细实现结构不能提供。"
-            "可以只做一个局部修复判断：先检查当前搜索停在了哪一行附近，再看它是否只验证了下一个字符。"
-            "需要先扩展哪一小段搜索逻辑？"
+            "完整代码、最终答案和可复制实现不能提供。"
+            "当前搜索可以只看这个局部框架：\n`if board[r][c] != word[pos]: ...`\n`visited.add((r, c))`\n`# try neighbors with pos + 1`\n"
+            "先检查回退时是否恢复当前格。"
         )
 
     if problem_key == "word_ladder":
         return (
-            "我理解你想直接看到答案，但我不能提供代码、最终答案或详细实现结构。"
-            "可以先做一个很小的局部修复：按行号找出当前搜索扩展邻居的位置，再确认它是否只加入相差一个字符且未访问的词。"
-            "你想先让我帮你定位哪一行附近吗？"
+            "我理解你想直接看到答案，但我不能提供完整代码、最终答案或可复制实现。"
+            "邻居扩展处可以先套这个局部框架：\n`diff = ...`\n`if diff == 1 and candidate not in seen:`\n`    # enqueue candidate with next depth`\n"
+            "再检查第一次到达终点时的层数。"
         )
 
     return (
-        "我理解你想直接看到答案，但我不能提供代码、最终答案或详细实现结构。"
-        "可以先做一个很小的局部修复：按行号找出当前搜索停在匹配第二个字符的位置，再让它继续处理后面的字符。"
-        "你想先让我帮你定位哪一行附近吗？"
+        "我理解你想直接看到答案，但我不能提供完整代码、最终答案或可复制实现。"
+        "搜索扩展处可以先套这个局部框架：\n`if board[r][c] != word[pos]: ...`\n`visited.add((r, c))`\n`# try neighbors with pos + 1`\n"
+        "再检查离开分支前是否恢复 visited。"
     )
 
 
@@ -1032,7 +1032,7 @@ def normalize_tutor_reply(content: str) -> str:
         return text
     lines = [line.strip().lstrip("-*0123456789.、 ") for line in text.splitlines() if line.strip()]
     code_hint_lines = sum(1 for line in lines if "`" in line or re.search(r"\b(if|return)\b", line) or "[" in line)
-    if 2 <= code_hint_lines <= 3 and len(lines) <= 5:
+    if 1 <= code_hint_lines <= 6 and len(lines) <= 8:
         return "\n".join(lines).strip()
     return re.sub(r"[ \t]{2,}", " ", " ".join(lines)).strip()
 
@@ -1049,6 +1049,11 @@ def learner_request_needs_high_support(message: Any) -> bool:
         "提示代码",
         "代码提示",
         "少量代码",
+        "思路",
+        "怎么做",
+        "怎么想",
+        "提示",
+        "具体",
         "哪一行",
         "第几行",
         "行附近",
@@ -1057,6 +1062,11 @@ def learner_request_needs_high_support(message: Any) -> bool:
         "don't know",
         "some code",
         "code hint",
+        "hint",
+        "idea",
+        "approach",
+        "how should i think",
+        "how to start",
         "which line",
     ]
     return any(marker in text for marker in markers)
@@ -1074,11 +1084,21 @@ def learner_request_asks_local_code_hint(message: Any) -> bool:
         "提示代码",
         "代码提示",
         "代码片段",
+        "思路",
+        "怎么做",
+        "怎么想",
+        "提示",
+        "具体",
         "哪一行",
         "第几行",
         "行附近",
         "some code",
         "code hint",
+        "hint",
+        "idea",
+        "approach",
+        "how should i think",
+        "how to start",
         "which line",
         "line",
     ]
@@ -1101,6 +1121,17 @@ def infer_code_focus(payload: dict[str, Any] | None = None) -> str:
             parsed_lines.append((index, line))
 
     if problem_key == "word_ladder":
+        for number, line in parsed_lines:
+            compact = line.replace(" ", "")
+            lowered = line.lower()
+            if "for " in lowered and ("wordlist" in lowered or "words" in lowered):
+                return f"第 {number} 行附近"
+
+        for number, line in parsed_lines:
+            compact = line.replace(" ", "")
+            if ("==endword" in compact.lower() or "!=endword" in compact.lower()) and "word" in compact.lower():
+                return f"第 {number} 行附近"
+
         for number, line in parsed_lines:
             compact = line.replace(" ", "")
             if "diff" in compact or "sum(" in compact and "!=" in compact:
@@ -1150,7 +1181,17 @@ def tutor_reply_fallback(
     consecutive_failures = safe_int(state.get("consecutive_failed_attempts"))
     message_high_support = learner_request_needs_high_support(learner_request)
 
+    asks_code_hint = learner_request_asks_local_code_hint(learner_request)
     if scaffold == "fixed_low" or (scaffold == "adaptive" and consecutive_failures < 3 and not message_high_support):
+        if asks_code_hint:
+            focus = infer_code_focus(payload)
+            if problem_key == "word_ladder":
+                if mode == "neutral":
+                    return f"{focus}先只检查一个局部条件，不展开完整搜索。`diff == 1` 用来判断两个词是否能相连；这个 diff 应该由哪两个词比较得到？"
+                return f"{focus}先只检查一个局部条件，不急着展开完整搜索。`diff == 1` 用来判断两个词是否能相连；你觉得这个 diff 应该由哪两个词比较得到？"
+            if mode == "neutral":
+                return f"{focus}先只检查当前位置是否匹配当前字符，不展开完整搜索。`board[r][c] == word[pos]` 是局部条件；pos 应该代表路径里的第几个字符？"
+            return f"{focus}先只检查当前位置是否匹配当前字符，不急着展开完整搜索。`board[r][c] == word[pos]` 是局部条件；你觉得 pos 应该代表路径里的第几个字符？"
         if scaffold == "adaptive" and attempt_count == 0:
             if problem_key == "word_ladder":
                 if mode == "neutral":
@@ -1171,11 +1212,11 @@ def tutor_reply_fallback(
     if learner_request_asks_local_code_hint(learner_request):
         if problem_key == "word_ladder":
             if mode == "neutral":
-                return f"{focus}需要只把相差一个字符且未访问的词放入下一层。可以只改这三行以内的小片段：\n`diff` 表示两个词不同字符数\n`diff == 1` 才是合法邻居\n`seen` 在入队时更新\n先检查邻居筛选是否和层次推进同步。"
-            return f"{focus}先局部处理邻居筛选，不需要写完整搜索。可以只改这三行以内的小片段：\n`diff` 表示两个词不同字符数\n`diff == 1` 才是合法邻居\n`seen` 在入队时更新\n再看同一个词是否会被重复加入。"
+                return f"{focus}需要只把相差一个字符且未访问的词放入下一层。可以用这个不完整局部框架：\n`diff = ...  # compare current and candidate`\n`if diff == 1 and candidate not in seen:`\n`    seen.add(candidate)`\n`    # enqueue candidate with next depth`\n先检查邻居筛选是否和层次推进同步。"
+            return f"{focus}先局部处理邻居筛选，不需要写完整搜索。可以用这个不完整局部框架：\n`diff = ...  # compare current and candidate`\n`if diff == 1 and candidate not in seen:`\n`    seen.add(candidate)`\n`    # enqueue candidate with next depth`\n再看同一个词是否会被重复加入。"
         if mode == "neutral":
-            return f"{focus}把匹配固定在某个字符位置，导致搜索不能继续推进。可以只改这三行以内的小片段：\n`pos` 表示当前要匹配的位置\n`word[pos]` 用来比较当前字符\n`pos + 1` 只在继续下一格时使用\n先检查位置是否随搜索推进。"
-        return f"{focus}把匹配固定在某个字符位置，所以更长单词会被截断。可以只改这三行以内的小片段：\n`pos` 表示当前要匹配的位置\n`word[pos]` 用来比较当前字符\n`pos + 1` 只在继续下一格时使用\n先检查位置是否随搜索推进。"
+            return f"{focus}把匹配固定在某个字符位置，导致搜索不能继续推进。可以用这个不完整局部框架：\n`if board[r][c] != word[pos]: ...`\n`visited.add((r, c))`\n`# try each neighbor with pos + 1`\n`visited.remove((r, c))`\n先检查位置是否随搜索推进。"
+        return f"{focus}把匹配固定在某个字符位置，所以更长单词会被截断。可以用这个不完整局部框架：\n`if board[r][c] != word[pos]: ...`\n`visited.add((r, c))`\n`# try each neighbor with pos + 1`\n`visited.remove((r, c))`\n先检查位置是否随搜索推进。"
 
     if problem_key == "word_ladder":
         if mode == "neutral":
@@ -1195,7 +1236,7 @@ def scaffold_allows_tiny_code(
     scaffold = normalize_scaffold_mode(scaffold_mode)
     state = learner_state if isinstance(learner_state, dict) else {}
     consecutive_failures = safe_int(state.get("consecutive_failed_attempts"))
-    return scaffold == "fixed_high" or (
+    return scaffold in {"fixed_low", "fixed_high"} or (
         scaffold == "adaptive" and (consecutive_failures >= 3 or learner_request_needs_high_support(learner_request))
     )
 
@@ -1246,7 +1287,21 @@ def tutor_reply_needs_fallback(
 
     non_empty_lines = [line.strip() for line in text.splitlines() if line.strip()]
     if low_support:
-        return "\n" in text or question_count != 1 or any(marker in text for marker in code_markers) or len(text) > 115
+        codeish_line_count = sum(
+            1
+            for line in non_empty_lines
+            if (
+                "`" in line
+                or re.search(r"\b(if|return)\b", line)
+                or re.search(r"\w+\s*=", line)
+                or "[" in line
+                or ".add(" in line
+                or ".remove(" in line
+            )
+        )
+        if asks_local_code_hint:
+            return question_count != 1 or len(text) > 190 or codeish_line_count > 1 or len(non_empty_lines) > 4
+        return "\n" in text or question_count != 1 or any(marker in text for marker in code_markers) or len(text) > 150
 
     if tiny_code_allowed:
         hard_markers = [
@@ -1257,7 +1312,10 @@ def tutor_reply_needs_fallback(
             " for ",
             " while ",
             " in range",
-            "完整",
+            "完整代码",
+            "完整函数",
+            "完整实现",
+            "完整答案",
             "整段",
             "复制",
         ]
@@ -1277,7 +1335,7 @@ def tutor_reply_needs_fallback(
             return True
         if asks_local_code_hint and codeish_line_count < 2:
             return True
-        return len(text) > 280 or len(non_empty_lines) > 6 or codeish_line_count > 3 or any(marker in text for marker in hard_markers)
+        return len(text) > 420 or len(non_empty_lines) > 8 or codeish_line_count > 6 or any(marker in text for marker in hard_markers)
 
     dangerous_code_detail = any(marker in text for marker in code_markers)
     return len(text) > 145 or dangerous_code_detail

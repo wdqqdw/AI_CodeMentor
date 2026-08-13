@@ -9,7 +9,8 @@ Important safety note:
 Request classification:
 {request_classification}
 
-If the classification is solution_or_code_request, ignore any current code, test result, and traceback context that may appear below. Use only the high-level problem concept.
+If the classification is complete_solution_request, ignore any current code, test result, and traceback context that may appear below. Refuse the complete answer briefly, then provide only the scaffold-allowed high-level hint.
+If the classification is local_code_hint_request, use the line-numbered code below to locate one local place to inspect or modify. Do not refuse merely because the learner asked for a small hint or a little code.
 
 Server-side learner state summary:
 {learner_state}

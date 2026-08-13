@@ -10,8 +10,8 @@ PROMPT_DIR = Path(__file__).resolve().parent / "prompts"
 SYSTEM_PROMPT_PATH = PROMPT_DIR / "tutor_system.md"
 USER_TEMPLATE_PATH = PROMPT_DIR / "tutor_user_template.md"
 SYSTEM_PROMPT_PATHS = {
-    "encouraging": PROMPT_DIR / "variants" / "encouraging_tutor_v9.md",
-    "neutral": PROMPT_DIR / "variants" / "neutral_tutor_v9.md",
+    "encouraging": PROMPT_DIR / "variants" / "encouraging_tutor_v10.md",
+    "neutral": PROMPT_DIR / "variants" / "neutral_tutor_v10.md",
 }
 SCAFFOLD_PROMPT_PATHS = {
     "fixed_low": PROMPT_DIR / "scaffolds" / "fixed_low.md",
@@ -97,6 +97,11 @@ def _is_code_hint_request(message: str) -> bool:
         "代码片段",
         "代码示例",
         "示例代码",
+        "思路",
+        "怎么做",
+        "怎么想",
+        "提示",
+        "具体",
         "哪一行",
         "第几行",
         "行附近",
@@ -108,6 +113,11 @@ def _is_code_hint_request(message: str) -> bool:
         "sample code",
         "show sample code",
         "code example",
+        "hint",
+        "idea",
+        "approach",
+        "how should i think",
+        "how to start",
     ]
     return any(marker in lowered for marker in markers)
 

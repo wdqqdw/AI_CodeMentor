@@ -97,10 +97,10 @@ The tutor prompt is intentionally editable without touching the server code:
 
 - `backend/prompts/tutor_system.md`: system-level tutor behavior and safety rules.
 - `backend/prompts/tutor_user_template.md`: the context template sent with each learner message.
-- `backend/prompts/variants/encouraging_tutor_v9.md`: encouraging tone rules.
-- `backend/prompts/variants/neutral_tutor_v9.md`: neutral tone rules.
+- `backend/prompts/variants/encouraging_tutor_v10.md`: encouraging tone rules.
+- `backend/prompts/variants/neutral_tutor_v10.md`: neutral tone rules.
 - `backend/prompts/scaffolds/*.md`: hidden scaffold-condition modules for fixed low, fixed high, and adaptive support.
 
 The backend reads these files when it builds each Tutor request, so edits apply on the next request.
 The server also applies deterministic scaffold guardrails when a model reply is too long, includes disallowed code detail, or violates the fixed-low question-only format.
-The latest six-condition balance notes are in `backend/prompts/evaluations/scaffold_condition_balance_2026-08-04.md`.
+The latest scaffold usability notes are in `backend/prompts/evaluations/scaffold_prompt_v10_2026-08-13.md`.
