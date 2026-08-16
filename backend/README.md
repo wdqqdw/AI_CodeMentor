@@ -30,7 +30,8 @@ backend/private_data/
 This directory is ignored by git. It stores:
 
 - `users.json`: usernames and password hashes.
-- `account_metadata.json`: private experiment metadata for each account, including Tutor style, hidden scaffold style, six-cell condition key, and binding timestamps. Existing entries are not reassigned.
+- `account_metadata.json`: private experiment metadata for each account, including Tutor style, hidden scaffold style, six-cell condition key, block assignment metadata, and binding timestamps. Existing entries are not reassigned.
+- `assignment_blocks.json`: private block-randomization queue. New accounts draw from shuffled blocks of 6 covering `Group A/B x fixed_low/fixed_high/adaptive` exactly once per block.
 - `sessions.json`: active login sessions.
 - `histories/*.jsonl`: per-account Tutor conversation history.
 - `activities/*.jsonl`: per-account Run, Submit, Tutor chat, code snapshot, and testcase result records.

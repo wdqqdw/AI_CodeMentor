@@ -2,7 +2,7 @@
 
 AI_CodeMentor is an AI-assisted coding practice prototype. The current public page starts with a prerequisite **Knowledge** view, then unlocks two coding tasks after the learner has spent at least 6 minutes reading: **Boggle Solver / 棋盘单词搜索** and **Word Ladder / 单词接龙**. Each task uses the Python coding panel, testcase feedback, a full Traceback panel for runtime errors, and the AI Tutor chat panel.
 
-Last updated: 2026-08-13
+Last updated: 2026-08-16
 
 ## Quick Links
 
@@ -32,8 +32,8 @@ Last updated: 2026-08-13
 - Backend conversation history window: latest `100000` characters.
 - Account system: enabled. The app opens with registration/login before AI Tutor can be used.
 - Counterbalanced Tutor assignment: enabled. The backend privately assigns each account to Group A or Group B. Group A receives Boggle + Encouraging Tutor and Word Ladder + Neutral Tutor; Group B receives Boggle + Neutral Tutor and Word Ladder + Encouraging Tutor. Learners do not choose or see this assignment.
-- Hidden scaffold binding: enabled. Each account is privately assigned once to `fixed_low`, `fixed_high`, or `adaptive`; learners do not see this condition. The scaffold condition crosses with the two-task counterbalanced Tutor assignment.
-- Account metadata JSON: enabled. The backend maintains private `account_metadata.json` with username, study group, Boggle Tutor style, Word Ladder Tutor style, hidden scaffold style, condition key, and binding timestamps. Existing metadata is skipped rather than reassigned.
+- Hidden scaffold binding: enabled with six-cell block randomization. New accounts are assigned from shuffled blocks of 6 covering `Group A/B x fixed_low/fixed_high/adaptive` exactly once per block; learners do not see this condition.
+- Account metadata JSON: enabled. The backend maintains private `account_metadata.json` with username, study group, Boggle Tutor style, Word Ladder Tutor style, hidden scaffold style, condition key, block assignment metadata, and binding timestamps. Existing metadata is skipped rather than reassigned.
 - Runtime error display: enabled. The editor has a dedicated `Traceback` tab that shows full per-case runtime errors instead of truncating them in the bottom status strip. A single case error does not stop the remaining cases from running.
 - Editor draft persistence: enabled. The browser stores code drafts locally by account, problem, and language so refreshing the page does not erase a learner's current code.
 - Editor recovery controls: enabled. The code toolbar includes Undo and Reset-to-starter buttons; Reset asks for confirmation and can be reversed with Undo.

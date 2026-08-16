@@ -7,6 +7,7 @@ import hashlib
 import csv
 import json
 import os
+import random
 import re
 import sys
 import threading
@@ -151,6 +152,7 @@ USER_HISTORY_DIR = PRIVATE_DATA_DIR / "histories"
 USER_ACTIVITY_DIR = PRIVATE_DATA_DIR / "activities"
 ACCOUNT_SUMMARY_CSV_PATH = PRIVATE_DATA_DIR / "account_summary.csv"
 ACCOUNT_METADATA_PATH = PRIVATE_DATA_DIR / "account_metadata.json"
+ASSIGNMENT_BLOCKS_PATH = PRIVATE_DATA_DIR / "assignment_blocks.json"
 
 USERNAME_RE = re.compile(r"^[A-Za-z0-9_.-]{3,32}$")
 HISTORY_LOCK = threading.Lock()
@@ -455,6 +457,80 @@ def request_condition_label(user: dict[str, Any], problem_id: Any, tutor_mode: A
     return f"{experiment_group_label(experiment_group_for_user(user))} / {problem_label}: {tutor_mode_label(mode)} / {scaffold_mode_label(scaffold_mode_for_user(user))}"
 
 
+def experiment_condition_cells() -> list[dict[str, str]]:
+    return [
+        {
+            "experiment_group": group,
+            "scaffold_mode": scaffold,
+            "condition_key": f"{group}:{scaffold}",
+            "condition_label": f"{experiment_group_label(group)} / {scaffold_mode_label(scaffold)}",
+        }
+        for group in EXPERIMENT_GROUPS
+        for scaffold in SCAFFOLD_MODES
+    ]
+
+
+def new_assignment_block(block_number: int) -> dict[str, Any]:
+    cells = experiment_condition_cells()
+    random.SystemRandom().shuffle(cells)
+    block_id = f"block_{block_number:04d}_{token_urlsafe(6)}"
+    return {
+        "id": block_id,
+        "block_number": block_number,
+        "created_at": now_iso(),
+        "size": len(cells),
+        "remaining": [
+            {
+                **cell,
+                "block_id": block_id,
+                "block_number": block_number,
+                "position_in_block": index,
+            }
+            for index, cell in enumerate(cells, start=1)
+        ],
+    }
+
+
+def draw_block_assignment(user: dict[str, Any], metadata_key: str) -> dict[str, Any]:
+    store = read_json_file(
+        ASSIGNMENT_BLOCKS_PATH,
+        {
+            "version": 1,
+            "strategy": "block_randomization",
+            "block_size": len(experiment_condition_cells()),
+            "blocks_created": 0,
+            "pending": [],
+            "assignments": [],
+        },
+    )
+    pending = store.setdefault("pending", [])
+    if not isinstance(pending, list):
+        pending = []
+        store["pending"] = pending
+
+    if not pending:
+        block = new_assignment_block(safe_int(store.get("blocks_created")) + 1)
+        store["blocks_created"] = block["block_number"]
+        pending.extend(block["remaining"])
+
+    assignment = pending.pop(0)
+    assigned_at = now_iso()
+    assignment_record = {
+        **assignment,
+        "user_id": str(user.get("id", "")),
+        "username": user.get("username", ""),
+        "username_key": user.get("username_key", ""),
+        "metadata_key": metadata_key,
+        "assigned_at": assigned_at,
+    }
+    assignments = store.setdefault("assignments", [])
+    if isinstance(assignments, list):
+        assignments.append(assignment_record)
+    store["updated_at"] = assigned_at
+    write_json_file(ASSIGNMENT_BLOCKS_PATH, store)
+    return assignment_record
+
+
 def choose_scaffold_mode_for_tutor(tutor_mode: Any, metadata: dict[str, Any] | None = None) -> str:
     clean_tutor_mode = tutor_mode_for_user({"tutor_mode": tutor_mode})
     metadata_store = metadata or read_json_file(ACCOUNT_METADATA_PATH, {"accounts": {}})
@@ -524,14 +600,25 @@ def ensure_account_metadata(user: dict[str, Any]) -> dict[str, Any]:
                 user[field] = existing[field]
         return existing
 
-    tutor_mode = tutor_mode_for_user(user)
-    scaffold_mode = scaffold_mode_for_user(user) if user.get("scaffold_mode") else choose_scaffold_mode_for_tutor(tutor_mode, metadata_store)
+    block_assignment: dict[str, Any] = {}
     if isinstance(existing, dict) and existing.get("tutor_mode"):
         experiment_group = group_for_legacy_boggle_tutor_mode(existing.get("tutor_mode"))
+        scaffold_mode = (
+            scaffold_mode_for_user(user)
+            if user.get("scaffold_mode")
+            else choose_scaffold_mode_for_tutor(existing.get("tutor_mode"), metadata_store)
+        )
     elif user.get("experiment_group"):
         experiment_group = normalize_experiment_group(user.get("experiment_group"))
+        scaffold_mode = (
+            scaffold_mode_for_user(user)
+            if user.get("scaffold_mode")
+            else choose_scaffold_mode_for_tutor(EXPERIMENT_GROUPS[experiment_group]["boggle_solver"], metadata_store)
+        )
     else:
-        experiment_group = choose_experiment_group(metadata_store)
+        block_assignment = draw_block_assignment(user, metadata_key)
+        experiment_group = normalize_experiment_group(block_assignment.get("experiment_group"))
+        scaffold_mode = normalize_scaffold_mode(block_assignment.get("scaffold_mode"))
     boggle_tutor_mode = EXPERIMENT_GROUPS[experiment_group]["boggle_solver"]
     word_ladder_tutor_mode = EXPERIMENT_GROUPS[experiment_group]["word_ladder"]
     condition_key = f"{experiment_group}:{scaffold_mode}"
@@ -552,6 +639,10 @@ def ensure_account_metadata(user: dict[str, Any]) -> dict[str, Any]:
         "scaffold_mode_label": scaffold_mode_label(scaffold_mode),
         "condition_key": condition_key,
         "condition_label": f"{experiment_group_label(experiment_group)} / {scaffold_mode_label(scaffold_mode)}",
+        "assignment_strategy": "block_randomization" if block_assignment else "legacy_or_manual",
+        "assignment_block_id": block_assignment.get("block_id", ""),
+        "assignment_block_number": block_assignment.get("block_number", ""),
+        "assignment_position_in_block": block_assignment.get("position_in_block", ""),
         "metadata_bound_at": bound_at,
         "created_at": user.get("created_at", bound_at),
         "last_login_at": user.get("last_login_at", ""),
